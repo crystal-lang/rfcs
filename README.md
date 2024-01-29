@@ -32,7 +32,6 @@ Some changes do not require an RFC:
 
 - Rephrasing, reorganizing, refactoring, or otherwise "changing shape does not change meaning".
 - Additions that strictly improve objective, numerical quality criteria (warning removal, speedup, better platform coverage, more parallelism, trap more errors, etc.)
-- Additions only likely to be _noticed by_ other developers-of-rust, invisible to users-of-rust.
 - Small additions to the `stdlib`.
 
 If you submit a pull request to implement a new feature without going through the RFC process, it may be closed with a polite request to submit an RFC first.
@@ -54,7 +53,7 @@ As a rule of thumb, receiving encouraging feedback from long-standing project de
 
 [What the process is]: #what-the-process-is
 
-In short, to get a major feature added to Crystal, one must first get the RFC merged into the RFC repository as a markdown file. At that point the RFC is "active" and may be implemented with the goal of eventual inclusion into Rust.
+In short, to get a major feature added to Crystal, one must first get the RFC merged into the RFC repository as a markdown file.
 
 - Fork the RFC repo [RFC repository]
 - Copy `0000-template.md` to `text/0000-my-feature.md` (where "my-feature" is descriptive). Don't assign an RFC number yet; This is going to be the PR number and we'll rename the file accordingly if the RFC is accepted.
