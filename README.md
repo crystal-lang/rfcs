@@ -57,7 +57,7 @@ In short, to get a major feature added to Crystal, one must first get the RFC me
 
 - Fork the RFC repo [RFC repository]
 - Copy `0000-template.md` to `text/0000-my-feature.md` (where "my-feature" is descriptive). Don't assign an RFC number yet; This is going to be the PR number and we'll rename the file accordingly if the RFC is accepted.
-- Fill in the RFC. Put care into the details: RFCs that do not present convincing motivation, demonstrate lack of understanding of the design's impact, or are disingenuous about the drawbacks or alternatives tend to be poorly-received.
+- Fill in the RFC. It doesn't need to fill-in all the sections, but you can use the proposed format to guide your own thought process. Put care into the details: RFCs that do not present convincing motivation, demonstrate lack of understanding of the design's impact, or are disingenuous about the drawbacks or alternatives tend to be poorly-received.
 - Submit a pull request. As a pull request the RFC will receive design feedback from the larger community, and the author should be prepared to revise it in response.
 - Now that your RFC has an open pull request, use the issue number of the PR to update your `0000-` prefix to that number.
 - Build consensus and integrate feedback. RFCs that have broad support are
