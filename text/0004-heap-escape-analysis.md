@@ -40,7 +40,7 @@ Developers shouldn't have to worry about where a class is instanciated. The opti
 
 Alternatively, developers can already change a `class` into a `struct` but the semantics will change (pass by copy, must pass pointers) is unsafe (no protection against dangling pointers) and limited to the types the developer has actual control upon, as we can't change a type from stdlib or a shard.
 
-There is also pending work to add mechanisms to manually allocate class instances on the stack (see #13481). The advantage is that it gives control to developers, the drawback is that it puts the burden to the developer to use the mechanism, and it can be unsafe because a method may capture a reference (dangling pointer) which Crystal won't protect against.
+There is also pending work to add mechanisms to manually allocate class instances on the stack (see crystal-lang/crystal#13481). The advantage is that it gives control to developers, the drawback is that it puts the burden to the developer to use the mechanism, and it can be unsafe because a method may capture a reference (dangling pointer) which Crystal won't protect against.
 
 > [!NOTE]
 The HEAP escape analysis is a best effort and may not detect subtle situations as safe; it may not replace manual stack allocations as decided by the developer.
