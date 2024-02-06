@@ -1,7 +1,7 @@
 - Feature Name: `wait_group`
 - Start Date: 2024-02-06
 - RFC PR: [crystal-lang/rfcs#3](https://github.com/crystal-lang/rfcs/pull/3)
-- Implementation PR: [crystal-lang/crystal#0000](https://github.com/crystal-lang/crystal/pull/14167)
+- Implementation PR: [crystal-lang/crystal#14167](https://github.com/crystal-lang/crystal/pull/14167)
 
 # Summary
 
