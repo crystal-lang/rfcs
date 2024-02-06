@@ -230,42 +230,137 @@ Ideally developers would be able to create custom execution contexts. That means
 
 ## Changes
 
-- `Thread.execution_context`: refs to the current execution context (may be nil and raise on access);
+```crystal
+class Thread
+  # reference to the current execution context
+  property! execution_context : ExecutionContext
 
-- `Thread#execution_context_scheduler`: refs to current MT scheduler (may be nil and raise on access);
+  # reference to the current MT scheduler (only present for MT contexts)
+  property! execution_context_scheduler : ExecutionContext::Scheduler
 
-- `Thread#current_fiber`: refs to the currently running fiber (simpler access + support scenarios where a whole scheduler is moved to another thread when a fiber has blocked for too long: the fiber would still need to access `Fiber.current`).
+  # reference to the currently running fiber (simpler access + support scenarios
+  # where a whole scheduler is moved to another thread when a fiber has blocked
+  # for too long: the fiber would still need to access `Fiber.current`).
+  property! current_fiber : Fiber
+end
 
-- `Fiber#execution_context`: the execution context the fiber runs in (so `Fiber#enqueue` can target the fiber’s actual context on re-enqueue, same for the unsafe `#resume`);
-- `Fiber#current_thread` reference shall be dropped;
-- `Fiber.yield` delegates to `ExecutionContext.current`;
-- `Fiber#resume` and `Fiber#yield_to` target `@execution_context` (that must be the current execution context).
+class Fiber
+  def self.current : Fiber
+    Thread.current.current_fiber
+  end
 
-- `spawn` takes an `execution_context` param that defaults to `ExecutionContext.current` (instead of `same_thread`);
-- `sleep` delegates targets `ExecutionContext.current`.
+  def self.yield : Nil
+    ExecutionContext.yield
+  end
 
-## `ExecutionContext`
+  property execution_context : ExecutionContext
 
-An abstract class and namespace that defines the API for execution contexts.
+  def initialize(@name : String?, @execution_context : ExecutionContext)
+  end
 
-- `.current`: refs to `Thread.current.execution_context`;
-- `.default`: refs to the default execution context created by Crystal’s runtime.
+  def enqueue : Nil
+    @execution_context.enqueue(self)
+  end
 
-The following methods must be thread-safe:
+  def resume : Nil
+    # can't call ExecutionContext#resume directly (it's protected)
+    ExecutionContext.resume(self)
+  end
+end
 
-- `#spawn` and `#enqueue` can be called from whatever context and must be thread safe (even ST);
-- `#stack_pool` and `#event_loop` accessors don’t have to be protected, but their implementation must be thread safe.
+def spawn(*, name : String?, execution_context : ExecutionContext = ExecutionContext.current, &block) : Fiber
+  Fiber.new(name, execution_context, &block)
+end
 
-The following methods must only be called on the current execution context, otherwise we could resume or suspend a fiber on whatever context:
+def sleep : Nil
+  ExecutionContext.reschedule
+end
 
-- `.reschedule`, `.yield`, `.sleep`, `.resume` and `.yield_to` delegate to the current execution context;
-- `#reschedule`, `#yield`, `#sleep`, `#resume` and `#yield_to` are protected methods.
+def sleep(time : Time::Span) : Nil
+  ExecutionContext.sleep(time)
+end
+```
 
-The namespace would contain descendant classes of `ExecutionContext`. For example:
+And the proposed API:
 
-- `ExecutionContext::SingleThreaded`;
-- `ExecutionContext::MultiThreaded`
-- `ExecutionContext::Isolated`
+```crystal
+abstract class ExecutionContext
+  # the default execution context (always started)
+  class_getter default = MultiThreaded.new("DEFAULT", minimum: 1, maximum: System.cpu_count.to_i)
+
+  def self.current : ExecutionContext
+    Thread.current.execution_context
+  end
+
+  # the following methods delegate to the current execution context, they expose
+  # the otherwise protected instance methods which are only safe to call on the
+  # current execution context:
+
+  def self.reschedule : Nil
+    current.reschedule
+  end
+
+  def self.sleep(time : Time::Span) : Nil
+    current.sleep(time)
+  end
+
+  def self.yield : Nil
+    current.yield
+  end
+
+  def self.resume(fiber : Fiber) : Nil
+    current = self.current
+    if fiber.execution_context == current
+      current.resume(fiber)
+    else
+      raise "BUG"
+    end
+  end
+
+  def self.yield_to(fiber : Fiber) : Nil
+    current.yield_to(fiber)
+  end
+
+  # the following methods can be called from whatever context and must thrad
+  # safe (even ST):
+
+  abstract def spawn(name : String?, &block) : Fiber
+  abstract def enqueue(fiber : Fiber) : Nil
+
+  # the following accessors don’t have to be protected, but their implementation
+  # must be thread safe (even ST):
+
+  abstract def stack_pool : Fiber::StackPool
+  abstract def event_loop : Crystal::EventLoop
+
+  # the following methods must only be called on the current execution context,
+  # otherwise we could resume or suspend a fiber on whatever context:
+
+  abstract protected def reschedule : Nil
+  abstract protected def sleep(time : Time::Span) : Nil
+  abstract protected def yield : Nil
+  abstract protected def resume(fiber : Fiber) : Nil
+  abstract protected def yield_to(fiber : Fiber) : Nil
+
+  class SingleThreaded < ExecutionContext
+    def initialize(name : String)
+      # todo: start one thread
+    end
+  end
+
+  class MultiThreaded < ExecutionContext
+    getter name : String
+
+    def self.new(name : String, exactly : Int32)
+      new(name, exactly, exactly)
+    end
+
+    def initialize(@name : String, @minimum : Int32, @maximum : Int32)
+      # todo: start @minimum threads
+    end
+  end
+end
+```
 
 ### Example
 
