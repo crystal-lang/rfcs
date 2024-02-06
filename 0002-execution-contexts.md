@@ -5,7 +5,7 @@
 
 # Summary
 
-Reinvent MT support in with different Execution Contexts.
+Reinvent MT support in Crystal to be more efficient, for example by avoiding blocked fibers while there are sleeping threads, all the while empowering developers with different Execution Contexts to run fibers in.
 
 Note: this proposal takes inspiration from Go and Kotlin.
 
@@ -22,6 +22,7 @@ Note: this proposal takes inspiration from Go and Kotlin.
 
 ## Concurrency
 
+> [!NOTE]
 > I only quickly sum up the concurrency model. There are very interesting topics about concurrency to consider (e.g. structured concurrency, fiber cancellation), but this RFC focuses on parallelism.
 
 Fibers, also commonly named coroutines, lightweight- or user-threads, are the basis of the concurrency system in Crystal.
@@ -34,12 +35,13 @@ For example IO operations, such as opening a file or reading from a socket, are 
 
 Fibers are cooperative and can’t be preempted from external means. That being said the thread itself running fibers may be preempted by the operating system, also blocking all pending fibers schedulers on that thread.
 
-> The fact that fibers can’t be preempted is a side effect, and not part of the concurrency model. A future evolution may actively preempt fibers that have been running for too long, or ask them to yield at preemptible points.
+The fact that fibers can’t be preempted is a side effect, and not part of the concurrency model. A future evolution may actively preempt fibers that have been running for too long, or ask them to yield at preemptible points.
 
 ## Parallelism
 
 The current MT model can be summed up in one sentence:
 
+> [!IMPORTANT]
 > A fiber will always be resumed by the same thread.
 
 Spawning a fiber will send it to any running thread (in a round robin-ish way) to try and spread new fibers across different threads. A spawned fiber can optionally be associated to the same thread as the current fiber, hence grouping some fibers together, eventually forming a list of fibers that can run concurrently but will never run in parallel of each others.
@@ -51,7 +53,7 @@ In technical details the current MT solution also means:
 3. A scheduler will handle its queue and immediately go to sleep whenever the queue is empty (waiting for events on the event loop).
 4. We can’t target a specific thread or scheduler when spawning a fiber: it’s either sent to a thread (including the current one) or to the current thread.
 
-> In the current MT model the words scheduler and thread are almost interchangeable.
+Basically, the words scheduler and thread are almost interchangeable in the current MT model.
 
 ```mermaid
 flowchart LR
@@ -124,30 +126,32 @@ flowchart TD
 
 ## Limitations
 
+> [!IMPORTANT]
 > Some of these limitations may be fixable in the current model, with maybe a few limitations left.
 
 ### Can’t control the number of threads/schedulers at runtime
 
 There is no API to determine the initial number of threads/schedulers, or to resize the list.
 
-> This could be fixed with the current model. Sizing up isn’t an issue, but sizing down can be: we can’t move fibers, so we must wait for the queue to run empty before the thread can stop. If long running fibers are on different fibers (e.g. signal handler loop, loggers) we may not be able to resize down!
+> [!NOTE]
+> This could be fixed with the current model. Sizing up isn’t an issue, but sizing down can be: we can’t move fibers, so we must wait for the queue to run empty before the thread can stop. If long running fibers are sent to different threads (e.g. signal handler loop, loggers) we may not be able to resize down!
 
 ### Can’t start a thread without a scheduler & event-loop
 
-Technically we can, but calling anything remotely related to fibers or the event-loop is dangerous as it will immediately create a scheduler for the thread, and/or an event-loop for that thread, and possibly block the thread from doing any progress if the thread puts itself to sleep waiting for an event, or other issues.
+Technically we can (`Thread.new` is undisclosed API but can be called), yet calling anything remotely related to fibers or the event-loop is dangerous as it will immediately create a scheduler for the thread, and/or an event-loop for that thread, and possibly block the thread from doing any progress if the thread puts itself to sleep waiting for an event, or other issues.
 
+> [!NOTE]
 > We can fix this in the current model. For example by supporting to create a “bare” thread. Spawning a fiber would always be sent to other schedulers (or raise). We can also probably figure something about the event-loop and timers (e.g. Thread.sleep).
 
 ### Can’t isolate a fiber to a thread
 
 The fiber becomes the sole fiber executing on that thread, for a period of time or forever. No fiber shall be scheduled on that thread anymore. Here are some use cases:
 
-Run the Gtk or QT main loops, that must run in a dedicated thread, callbacks from the UI may run in that thread and communicate with the rest of the Crystal application, even if it only has one other thread for running all fibers, the communication must be thread safe.
+- Run the Gtk or QT main loops, that must run in a dedicated thread, callbacks from the UI may run in that thread and communicate with the rest of the Crystal application, even if it only has one other thread for running all fibers, the communication must be thread safe.
+- Executing a slow, CPU-bound, operation can take a while (e.g. calculating a bcrypt password hash) and it will block all progress of other fibers that happen to run on the same thread.
+- Again, see issue [#12392](https://github.com/crystal-lang/crystal/issues/12392).
 
-Executing a slow, CPU-bound, operation can take a while (e.g. calculating a bcrypt password hash) and it will block all progress of other fibers that happen to run on the same thread.
-
-Again, see issue [#12392](https://github.com/crystal-lang/crystal/issues/12392).
-
+> [!NOTE]
 > We could workaround this in the current model. For example by supporting to create a thread without a scheduler and execute some action there. It would work nicely for very long operations (maybe not so with operations that may last for some hundred milliseconds).
 >
 > That wouldn’t fix issue [#12392](https://github.com/crystal-lang/crystal/issues/12392) however: we can’t have the current thread continue running the current fiber, and actively move the scheduler to another thread to not block the other fibers, otherwise the fibers would run in parallel to the isolated fiber, breaking the contract!
@@ -166,19 +170,19 @@ Applications can create any number of execution contexts in parallel. These cont
 
 Said differently: an execution context groups fibers together. Instead of associating a fiber to a specific thread, we'd now associate a fiber to an execution context, abstracting which thread(s) they actually run on.
 
-When spawning a fiber, the fiber will by default be enqueued into the current execution context, the one running the current fiber. Child fibers will thus execute in the same execution context as their parent (unless told otherwise).
+When spawning a fiber, the fiber would by default be enqueued into the current execution context, the one running the current fiber. Child fibers will then execute in the same execution context as their parent (unless told otherwise).
 
-Once spawned a fiber shouldn’t _move_ to another execution context. For example on re-enqueue the fiber must be resumed into it’s execution context (e.g. context B enqueues waiting sender from context A). That being said, we could allow to _send_ a fiber to another context.
+Once spawned a fiber shouldn’t _move_ to another execution context. For example on re-enqueue the fiber must be resumed into it’s execution context: context B enqueues waiting sender from context A. That being said, we could allow to _send_ a fiber to another context.
 
 ## Kinds of execution contexts
 
-These are the contexts that Crystal could implement.
+The following are the potential contexts that Crystal could implement in stdlib.
 
 **Single Threaded Context**: fibers will never run in parallel, they can use simpler and faster synchronization primitives internally (no atomics, no thread safety) and still communicate with other contexts with the default thread-safe primitives; the drawback is that a blocking fiber will block the thread and all the other fibers.
 
 **Multi Threaded Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
 
-**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main` or game loop), thus disabling concurrency on that thread; an issue is what happens if the fiber tries to spawn? or tries to communicate with other contexts? an advantage is that the fiber can own a thread (without blocking other fibers).
+**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main` or game loop), thus disabling concurrency on that thread; an issue is what happens if the fiber tries to spawn (raise? forward to default context?), triggers the event-loop (IO, timers), or tries to communicate with other contexts? An advantage is that the fiber can own a thread, without blocking other fibers.
 
 Precisions:
 
@@ -187,15 +191,15 @@ Precisions:
 
 ## The default execution context
 
-Crystal would by default start a MT execution context where fibers are spawned by default. This context would be MT with work-stealing so that developers can take advantage of parallelism without having to think too much about it.
+Crystal would start a MT execution context with work-stealing where fibers are spawned by default. The goal of this context is to provide an environment that should fit most use cases to freely take advantage of multiple CPU cores, without developers having to think much about it, outside of protecting concurrent accesses to a resource or, preferably, using channels to communicate.
 
-It might be configured to run on one thread, hence disabling the parallelism of the default context if needed. Yet, it may still run in parallel to other contexts!
+It might be configured to run on one thread, hence disabling the parallelism of the default context when needed. Yet, it might still run in parallel with other contexts!
 
 ## The additional execution contexts
 
-Applications can create other execution contexts in addition to the default context. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Maybe even allow to tweak its thread priorities 🤔
+Applications could create other execution contexts in addition to the default one. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Maybe even allow to tweak its thread priorities for better allocations on CPU cores.
 
-Ideally anybody could implement an execution context that suits their application.
+Ideally, anybody could implement an execution context that suits their application.
 
 ## Examples
 
@@ -218,9 +222,9 @@ An execution context shall provide:
 - a scheduler to run the fibers (or many schedulers for a MT context);
 - an event loop (IO & timers):
 
-  => This might be complex: I don’t think we can share a libevent across event bases? we already need to have a “thread local” libevent object for IO objects as well as for PCRE2 (though this is an optimization).
+  => this might be complex: I don’t think we can share a libevent across event bases? we already need to have a “thread local” libevent object for IO objects as well as for PCRE2 (though this is an optimization).
 
-  => We might want to move to our own primitives on top of epoll (Linux) and kqueue (BSDs) since we already wrap IOCP (Win32) and a PR for io_uring (Linux) so we don’t have to stick to libevent2 limitations (e.g. we may be able to allocate events on the stack since we always suspend the fiber).
+  => we might want to move to our own primitives on top of epoll (Linux) and kqueue (BSDs) since we already wrap IOCP (Win32) and a PR for `io_uring` (Linux) so we don’t have to stick to libevent2 limitations (e.g. we may be able to allocate events on the stack since we always suspend the fiber).
 
 Ideally developers would be able to create custom execution contexts. That means we must have public APIs for at least the EventLoop and maybe the Scheduler (at least its resume method), which sounds like a good idea.
 
@@ -250,12 +254,52 @@ An abstract class and namespace that defines the API for execution contexts.
 The following methods must be thread-safe:
 
 - `#spawn` and `#enqueue` can be called from whatever context and must be thread safe (even ST);
-- `#stack_pool` and `#event_loop` accessors don’t have to be protected, but their implementation must be.
+- `#stack_pool` and `#event_loop` accessors don’t have to be protected, but their implementation must be thread safe.
 
 The following methods must only be called on the current execution context, otherwise we could resume or suspend a fiber on whatever context:
 
 - `.reschedule`, `.yield`, `.sleep`, `.resume` and `.yield_to` delegate to the current execution context;
 - `#reschedule`, `#yield`, `#sleep`, `#resume` and `#yield_to` are protected methods.
+
+The namespace would contain descendant classes of `ExecutionContext`. For example:
+
+- `ExecutionContext::SingleThreaded`;
+- `ExecutionContext::MultiThreaded`
+- `ExecutionContext::Isolated`
+
+### Example
+
+```crystal
+# (main fiber runs in the default context)
+# shrink the main context to a single thread:
+ExecutionContext.default.resize(maximum: 1)
+
+# create a dedicated context with N threads:
+ncpu = System.cpu_count
+codegen = ExecutionContext::MultiThreaded.new(name: "CODEGEN", minimum: ncpu, maximum: ncpu)
+channel = Channel(CompilationUnit).new(ncpu * 2)
+group = WaitGroup.new(ncpu)
+
+spawn do
+  # (runs in the default context)
+  units.each do |unit|
+    channel.send(unit)
+  end
+end
+
+ncpu.times do
+  codegen.spawn do
+    # (runs in the codegen context)
+    while unit = channel.receive?
+      unit.compile
+    end
+  ensure
+    group.done
+  end
+end
+
+group.wait
+```
 
 ## Breaking changes
 
@@ -277,17 +321,19 @@ The default execution context moving from 'a fiber is always resumed on the same
 
 # Drawbacks
 
-Usages of the `Crystal::ThreadLocalValue` helper class might break with fibers moving across threads:
+Usages of the `Crystal::ThreadLocalValue` helper class might break with fibers moving across threads. We use this because the GC can't access the Thread Local Storage space of threads. Some usages might be replaceable with direct accessors on `Thread.current` but some usages link a particular object instance to a particular thread; those cases will need to be refactored.
 
 - `Reference` (`#exec_recursive` and `#exec_recursive_clone`): a fiber may be preempted and moved to another thread while detecting recursion (should be a fiber property?)...
 
-  This might actually be a bug even with ST: the thread could switch to another fiber while checking for recursion. I assume current usages are cpu-bound and never reach a preemptible point, but still, there are no guarantees.
+> [!CAUTION]
+> This might actually be a bug even with ST: the thread could switch to another fiber while checking for recursion. I assume current usages are cpu-bound and never reach a preemptible point, but still, there are no guarantees.
 
-- `Regex` (PCRE2): not affected (no preemption within usages of JIT stack and match data objects);
+- `Regex` (PCRE2): not affected (no fiber preemption within usages of JIT stack and match data objects);
 
 - `IO::Evented`: will need an overhaul depending on the event loop details (still one per thread? or one per context?);
 
-   The event loop will very likely need an interface to fully abstract OS specific details around nonblocking calls (epoll, kqueue, IOCP, io_uring, …). See [#10766](https://github.com/crystal-lang/crystal/issues/10766).
+> [!WARNING]
+> The event loop will very likely need an interface to fully abstract OS specific details around nonblocking calls (epoll, kqueue, IOCP, io_uring, …). See [#10766](https://github.com/crystal-lang/crystal/issues/10766).
 
 # Rationale and alternatives
 
