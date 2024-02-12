@@ -60,6 +60,11 @@ class WaitGroup
     add(-1)
   end
 
+  # Increments the counter by 1.
+  # Spawns a fiber to execute the given block, eventually decrementing the counter by 1.
+  # Returns the fiber.
+  def spawn(**args, &) : Fiber
+
   # Blocks the current fiber until the counter reaches 0.
   def wait : Nil
 end
@@ -111,6 +116,7 @@ The proposed WaitGroup type would still have some advantages: it can signal fibe
 Go has the sync.WaitGroup type. Java has the CountDownLatch class. Both behave in a similar way as the proposed solution.
 
 The [Earl](https://www.shardbox.org/shards/earl) shard uses a WaitGroup type in its Supervisor and Pool classes to wait on the child fibers it spawned.
+The [Pond](https://github.com/GrottoPress/pond) shard implements a nursery-like spawner with a waiting mecanism.
 
 # Unresolved questions
 
