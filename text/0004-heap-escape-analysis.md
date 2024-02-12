@@ -26,9 +26,23 @@ The pass automatically decides where to allocate local variables.
 
 To detect more situations more easily, the pass should run after any code inlining passes (e.g. blocks). 
 
+## Lifetime
+
+The following list details the cases when a local variable (including method arguments) is considered captured.
+
+- It is a Reference or an Union with a Reference;
+- It is passed to a method that captures that argument (transitive property);
+- It is assigned to a local variable that will be captured;
+- It is assigned to a global variable;
+- It is assigned to a class variable;
+- It is assigned to an instance variable;
+- It is returned, unless it was an argument of this method;
+- A pointer to the variable is taken (`pointerof`) —unless the pointer itself isn't captured?;
+- It is passed to an FFI method (e.g. LibC).
+
 # Reference-level explanation
 
-This is left to actual implementors.
+The implementation details are left to actual implementors.
 
 # Drawbacks
 
@@ -54,6 +68,7 @@ Go developers don’t decide where variables are allocated: whenever possible Go
 Wikipedia has an [Escape analysis article](https://en.wikipedia.org/wiki/Escape_analysis), mentioning Java and Scheme.
 
 # Unresolved questions
+
 
 If the escape analysis is too costly, maybe the optimization may only be enabled when an optimization level is selected? That would avoid negatively impacting development builds.
 
