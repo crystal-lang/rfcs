@@ -15,16 +15,11 @@ Allocating in the HEAP is much slower than allocating on the stack. The GC is al
 
 # Guide-level explanation
 
-The escape analysis optimization to the semantic pass: if a variable doesn’t outlive the method it is defined in, and its instance size isn’t too large to be allocated on the stack, the compiler can decide allocate it on the HEAP.
+The escape analysis optimization to the semantic pass: if a variable doesn’t outlive the method it is defined in, and its instance size isn’t too large to be allocated on the stack, the compiler can decide to allocate it on the HEAP.
 
-A variable can’t outlive a method when the reference:
+The pass automatically decides where to allocate local variables based on their lifetime (see below).
 
-- isn’t returned by the method;
-- isn’t passed to a method that would capture it (i.e. the argument outlive the method).
-
-The pass automatically decides where to allocate local variables.
-
-To detect more situations more easily, the pass should run after any code inlining passes (e.g. blocks). 
+To detect more situations more easily, the pass should run after any code inlining passes (e.g. blocks).
 
 ## Lifetime
 
@@ -38,11 +33,20 @@ The following list details the cases when a local variable (including method arg
 - It is assigned to an instance variable;
 - It is returned, unless it was an argument of this method;
 - A pointer to the variable is taken (`pointerof`) —unless the pointer itself isn't captured?;
+  - Edge case: inner pointer to the variable (e.g. non Reference instance variable);
 - It is passed to an FFI method (e.g. LibC).
+
+In case of doubt, the variable must be considered captured.
+
+## Finalization
+
+A class object may have a finalizer. When a variable is allocated on the stack, instead of the GC HEAP, its finalizer must be called before the method returns. If an exception is raised and the variable has been initialized, its finalizer must still be called.
 
 # Reference-level explanation
 
 The implementation details are left to actual implementors.
+
+As a guideline, the transitive property could be implemented as storing a graph of instantiations' arguments instead of a simple flag. This makes parallel and incremental compilation possible as each method's escape analysis can be calculated independently during typing and then only an extremely short pass to traverse the trees at the end produces the final result.
 
 # Drawbacks
 
@@ -69,8 +73,9 @@ Wikipedia has an [Escape analysis article](https://en.wikipedia.org/wiki/Escape_
 
 # Unresolved questions
 
-
 If the escape analysis is too costly, maybe the optimization may only be enabled when an optimization level is selected? That would avoid negatively impacting development builds.
+
+It might be interesting to introduce an annotation (name to be determined) to override the lifetime. It's a dangerous annotation, yet it could be powerful and be very useful for FFI calls that would otherwise always consider a reference as captured, which might undermine some potential optimizations (e.g. LLVM instrinsics, ...).
 
 # Future possibilities
 
