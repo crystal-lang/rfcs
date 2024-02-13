@@ -319,10 +319,6 @@ abstract class ExecutionContext
     end
   end
 
-  def self.yield_to(fiber : Fiber) : Nil
-    current.yield_to(fiber)
-  end
-
   # the following methods can be called from whatever context and must thrad
   # safe (even ST):
 
@@ -342,7 +338,6 @@ abstract class ExecutionContext
   abstract protected def sleep(time : Time::Span) : Nil
   abstract protected def yield : Nil
   abstract protected def resume(fiber : Fiber) : Nil
-  abstract protected def yield_to(fiber : Fiber) : Nil
 
   class SingleThreaded < ExecutionContext
     def initialize(name : String)
