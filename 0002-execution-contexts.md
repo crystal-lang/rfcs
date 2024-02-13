@@ -182,7 +182,7 @@ The following are the potential contexts that Crystal could implement in stdlib.
 
 **Multi Threaded Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
 
-**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main` or game loop), thus disabling concurrency on that thread; an issue is what happens if the fiber tries to spawn (raise? forward to default context?), triggers the event-loop (IO, timers), or tries to communicate with other contexts? An advantage is that the fiber can own a thread, without blocking other fibers.
+**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main`, game loop, CPU heavy computation), thus disabling concurrency on that thread; the event-loop would work normally (blocking the current fiber, hence the thread), trying to spawn a fiber without an explicit context would spawn into another context specified when creating the isolated context that could default to `ExecutionContext.default`.
 
 Precisions:
 
@@ -191,9 +191,11 @@ Precisions:
 
 ## The default execution context
 
-Crystal would start a MT execution context with work-stealing where fibers are spawned by default. The goal of this context is to provide an environment that should fit most use cases to freely take advantage of multiple CPU cores, without developers having to think much about it, outside of protecting concurrent accesses to a resource or, preferably, using channels to communicate.
+Crystal starts a MT execution context with work-stealing where fibers are spawned by default. The goal of this context is to provide an environment that should fit most use cases to freely take advantage of multiple CPU cores, without developers having to think much about it, outside of protecting concurrent accesses to a resource or, preferably, using channels to communicate.
 
 It might be configured to run on one thread, hence disabling the parallelism of the default context when needed. Yet, it might still run in parallel with other contexts!
+
+**Note**: until Crystal 2.x the default execution context might be ST by default, to avoid breaking changes, and a compilation flag be required to choose MT by default (e.g. `-Dmt`).
 
 ## The additional execution contexts
 
@@ -359,6 +361,20 @@ abstract class ExecutionContext
       # todo: start @minimum threads
     end
   end
+
+  class Isolated < SingleThreaded
+    def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
+      super name
+      @fiber = Fiber.new(name: name, &@func)
+      enqueue @fiber
+    end
+
+    def spawn(**args, &) : Fiber
+      @spawn_context.spawn(**args) { yield }
+    end
+
+    # todo: prevent enqueue/resume of anything but @fiber
+  end
 end
 ```
 
@@ -398,7 +414,7 @@ group.wait
 
 ## Breaking changes
 
-The default execution context moving from 'a fiber is always resumed on the same thread" to the more lenient 'a fiber can be resumed by any thread", this introduces a couple breaking changes over preview_mt.
+The default execution context moving from 'a fiber is always resumed on the same thread" to the more lenient 'a fiber can be resumed by any thread", this introduces a couple breaking changes over `preview_mt`.
 
 1. Drop the "one fiber will always be resumed on the same thread" assumption, instead:
    - limit the default context to a single thread (disabling parallelism in the default context);
@@ -408,11 +424,18 @@ The default execution context moving from 'a fiber is always resumed on the same
    - limit the default context to a single thread (disables parallelism in the default context);
    - or create a single-threaded execution context for the fibers that must live on the same thread.
 
-3. Eventually drop the `preview_mt` flag and make MT the only compilation mode (at worst introduce `without_mt`):
+3. Drop the `preview_mt` flag and make execution contexts the only compilation mode (at worst introduce `without_mt`):
    - one can limit the default context to a single thread to (disabling parallelism at runtime);
    - sync primitives must be thread-safe, because fibers running on different threads or in different execution contexts will need to communicate safely;
    - sync primitives must be optimized for best possible performance when there is no parallelism;
    - community maintained shards may propose alternative sync primitives when we don’t want thread-safety to squeeze some extra performance inside a single-threaded context.
+
+> [!NOTE]
+> The breaking changes can be postponed to Crystal 2 by making the default execution context to be ST, keep supporting `same_thread: true` for ST while MT would raise, and `same_thread: false` would be a NOOP.
+>
+> A compilation flag can be introduced to change the default context to be MT in Crystal 1 (e.g. keep `-Dpreview_mt` but consider just `-Dmt`).
+>
+> Crystal 2 would drop the `same_thread` argument and make the default context MT.
 
 # Drawbacks
 
@@ -456,17 +479,17 @@ The **Tokio** crate for **Rust** provides a single-threaded scheduler or a multi
 
 ## Introduction of the feature
 
-The feature will likely require both the `preview_mt` and `execution_contexts` flags, at least for the initial implementations.
+The feature will likely require both the `preview_mt` and `execution_contexts` flags for the initial implementations.
 
-Since it is a breaking change from stable Crystal, unrelated to `preview_mt`, MT and execution contexts may only become default with a Crystal major release?
+~~Since it is a breaking change from stable Crystal, unrelated to `preview_mt`, MT and execution contexts may only become default with a Crystal major release?~~
 
-Maybe MT could be limited to 1 thread by default, and `spawn(same_thread)` be deprecated, but what to do with `spawn(same_thread: true)`?
+~~Maybe MT could be limited to 1 thread by default, and `spawn(same_thread)` be deprecated, but what to do with `spawn(same_thread: true)`?~~
 
 ## Default context configuration
 
 This proposal doesn’t solve the inherent problem of: how can applications configure the default context at runtime (e.g. number of MT schedulers) since we create the context before the application’s main can start. 
 
-We could maybe have sensible defaults + lazily started schedulers & threads, which means that the default context would only start 1 thread to run 1 scheduler, then start up to System.cpu_count on demand (using some heuristic).
+We could maybe have sensible defaults + lazily started schedulers & threads, which means that the default context would only start 1 thread to run 1 scheduler, then start up to `System.cpu_count` on demand (using some heuristic).
 
 The application would then be able to scale the default context programmatically, for example to a minimum of 4 schedulers which will immediately start the additional schedulers & threads.
 
