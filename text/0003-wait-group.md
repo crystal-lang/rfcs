@@ -120,7 +120,7 @@ The [Pond](https://github.com/GrottoPress/pond) shard implements a nursery-like 
 
 # Unresolved questions
 
-What should happen when the counter reached zero? The `#add` and `#done` shall raise a RuntimeError exception, but what about waiting fibers? They might be stuck forever.
+What should happen when the counter reaches a negative number? The `#add` and `#done` shall raise a RuntimeError exception, but what about waiting fibers? They might be stuck forever.
 
 - Should the application abort (aka panic)?
 - Should the waiting fibers be resumed _and_ also raise a RuntimeError exception?
