@@ -319,7 +319,7 @@ abstract class ExecutionContext
     end
   end
 
-  # the following methods can be called from whatever context and must thrad
+  # the following methods can be called from whatever context and must be thread
   # safe (even ST):
 
   abstract def spawn(name : String?, &block) : Fiber
