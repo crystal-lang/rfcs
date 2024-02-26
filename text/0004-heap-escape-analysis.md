@@ -54,7 +54,7 @@ Some objects would now be allocated on the stack, which are GC roots that must b
 
 # Rationale and alternatives
 
-Developers shouldn't have to worry about where a class is instanciated. The optimization would optimize anything from stdlib, shards or user code, all the while developers would use the objects normally.
+Developers shouldn't have to worry about where a class is instantiated. The optimization would optimize anything from stdlib, shards or user code, all the while developers would use the objects normally.
 
 Alternatively, developers can already change a `class` into a `struct` but the semantics will change (pass by copy, must pass pointers) is unsafe (no protection against dangling pointers) and limited to the types the developer has actual control upon, as we can't change a type from stdlib or a shard.
 
