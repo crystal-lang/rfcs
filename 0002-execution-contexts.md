@@ -267,6 +267,7 @@ class Fiber
     @execution_context.enqueue(self)
   end
 
+  @[Deprecated("Use Fiber#enqueue instead")]
   def resume : Nil
     # can't call ExecutionContext#resume directly (it's protected)
     ExecutionContext.resume(self)
@@ -441,6 +442,11 @@ The default execution context moving from 'a fiber is always resumed on the same
    - sync primitives must be thread-safe, because fibers running on different threads or in different execution contexts will need to communicate safely;
    - sync primitives must be optimized for best possible performance when there is no parallelism;
    - community maintained shards may propose alternative sync primitives when we don’t want thread-safety to squeeze some extra performance inside a single-threaded context.
+4. The `Fiber#resume` public method is deprecated because a fiber can't be resumed into any execution context:
+   - shall we raise if its context isn't the current one?
+   - shall we enqueue into the other context and reschedule? that would change the behavior: the fiber is supposed to be resumed _now_, not later, and the current fiber could be resumed before it (oops);
+   - the feature is also not used in the whole stdlib, and only appears within a single spec;
+   - raising might be acceptable, and the deprecation be removed if someone can prove that explicit continuations are interesting in Crystal.
 
 > [!NOTE]
 > The breaking changes can be postponed to Crystal 2 by making the default execution context be ST, keep supporting `same_thread: true` for ST while MT would raise, and `same_thread: false` would be a NOOP. A compilation flag can be introduced to change the default context to be MT in Crystal 1 (e.g. keep `-Dpreview_mt` but consider just `-Dmt`). Crystal 2 would drop the `same_thread` argument, make the default context MT:N, and introduce a `-Dwithout_mt` compilation flag to return to ST to ease the transition.
