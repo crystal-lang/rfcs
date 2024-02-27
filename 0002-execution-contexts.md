@@ -354,12 +354,8 @@ abstract class ExecutionContext
 
     getter name : String
 
-    def self.new(name : String, exactly : Int32)
-      new(name, exactly, exactly)
-    end
-
-    def initialize(@name : String, @minimum : Int32, @maximum : Int32)
-      # todo: start @minimum threads
+    def initialize(name : String, @size : Int32)
+      # todo: start @size threads
     end
 
     def spawn(name : String?, same_thread : Bool, &block) : Fiber
@@ -442,6 +438,7 @@ The default execution context moving from 'a fiber is always resumed on the same
    - sync primitives must be thread-safe, because fibers running on different threads or in different execution contexts will need to communicate safely;
    - sync primitives must be optimized for best possible performance when there is no parallelism;
    - community maintained shards may propose alternative sync primitives when we don’t want thread-safety to squeeze some extra performance inside a single-threaded context.
+
 4. The `Fiber#resume` public method is deprecated because a fiber can't be resumed into any execution context:
    - shall we raise if its context isn't the current one?
    - shall we enqueue into the other context and reschedule? that would change the behavior: the fiber is supposed to be resumed _now_, not later, and the current fiber could be resumed before it (oops);
@@ -511,4 +508,4 @@ The application would then be able to scale the default context programmatically
 
 # Future possibilities
 
-...
+MT execution contexts could eventually have a dynamic number of threads, adding new threads to a context when it has enough work, and removing threads when threads are starving (always within min..max limits). Ideally the threads could return to a thread pool (up to a total limit, like GOMAXPROCS in Go) and be reused by other contexts.
