@@ -172,7 +172,7 @@ Said differently: an execution context groups fibers together. Instead of associ
 
 When spawning a fiber, the fiber would by default be enqueued into the current execution context, the one running the current fiber. Child fibers will then execute in the same execution context as their parent (unless told otherwise).
 
-Once spawned a fiber shouldn’t _move_ to another execution context. For example on re-enqueue the fiber must be resumed into it’s execution context: context B enqueues waiting sender from context A. That being said, we could allow to _send_ a fiber to another context.
+Once spawned a fiber shouldn’t _move_ to another execution context. For example on re-enqueue the fiber must be resumed into it’s execution context: a fiber running in context B enqueues a waiting sender from context A must enqueue it into context A. That being said, we could allow to _send_ a fiber to another context.
 
 ## Kinds of execution contexts
 
@@ -188,6 +188,7 @@ Precisions:
 
 - The above list isn’t exclusive: there can be other contexts with different rules (for example MT without work stealing).
 - Each context isn’t exclusive: an application can start as many contexts in parallel as it needs.
+- An execution context should be wrappable. For example we could want to add nursery-like capabilities on top of an existing context, where the EC monitors all fibers and automatically shuts down when all said fibers have completed.
 
 ## The default execution context
 
@@ -199,9 +200,9 @@ It might be configured to run on one thread, hence disabling the parallelism of 
 
 ## The additional execution contexts
 
-Applications could create other execution contexts in addition to the default one. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Maybe even allow to tweak its thread priorities for better allocations on CPU cores.
+Applications can create other execution contexts in addition to the default one. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Even allow to tweak the threads' priority and CPU affinity for better allocations on CPU cores.
 
-Ideally, anybody could implement an execution context that suits their application.
+Ideally, anybody could implement an execution context that suits their application, or wrap an existing execution context.
 
 ## Examples
 
@@ -209,11 +210,11 @@ Ideally, anybody could implement an execution context that suits their applicati
 
 2. We can create an execution context dedicated to handle the UI or game loop of an application, and keep the threads of the default context to handle calculations or requests, never impacting the responsiveness of the UI.
 
-3. We can create an MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked.
+3. We can create an MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked when thousands of users try to login at the same time.
 
 4. The crystal compiler doesn’t need MT during the parsing and semantic phases (for now); we could configure the default execution context to 1 thread only, then start another execution context for codegen with as many threads as CPUs, and spawn that many fibers into this context.
 
-5. Different contexts could have different priorities, maybe allowing the operating system to allocate threads more effectively in big.LITTLE architectures.
+5. Different contexts could have different priorities and affinities, to allow the operating system to allocate threads more effectively in big.LITTLE architectures.
 
 # Reference-level explanation
 
@@ -229,6 +230,8 @@ An execution context shall provide:
   => we might want to move to our own primitives on top of epoll (Linux) and kqueue (BSDs) since we already wrap IOCP (Win32) and a PR for `io_uring` (Linux) so we don’t have to stick to libevent2 limitations (e.g. we may be able to allocate events on the stack since we always suspend the fiber).
 
 Ideally developers would be able to create custom execution contexts. That means we must have public APIs for at least the EventLoop and maybe the Scheduler (at least its resume method), which sounds like a good idea.
+
+In addition, synchronization primitives, such as `Channel(T)` or `Mutex`, must allow communication and synchronization across execution contexts, and thus be thread-safe.
 
 ## Changes
 
@@ -252,7 +255,7 @@ class Fiber
   end
 
   def self.yield : Nil
-    ExecutionContext.yield
+    ::sleep(0.seconds)
   end
 
   property execution_context : ExecutionContext
@@ -279,7 +282,8 @@ def sleep : Nil
 end
 
 def sleep(time : Time::Span) : Nil
-  ExecutionContext.sleep(time)
+  Fiber.current.resume_event.add(time)
+  ExecutionContext.reschedule
 end
 ```
 
@@ -298,24 +302,18 @@ abstract class ExecutionContext
   # the otherwise protected instance methods which are only safe to call on the
   # current execution context:
 
+  # Suspends the current fiber and resumes the next runnable fiber.
   def self.reschedule : Nil
     current.reschedule
   end
 
-  def self.sleep(time : Time::Span) : Nil
-    current.sleep(time)
-  end
-
-  def self.yield : Nil
-    current.yield
-  end
-
+  # Resumes `fiber` in the execution context. Raises if the fiber
+  # doesn't belong to the context.
   def self.resume(fiber : Fiber) : Nil
-    current = self.current
     if fiber.execution_context == current
       current.resume(fiber)
     else
-      raise "BUG"
+      raise RuntimeError.new
     end
   end
 
@@ -323,6 +321,7 @@ abstract class ExecutionContext
   # safe (even ST):
 
   abstract def spawn(name : String?, &block) : Fiber
+  abstract def spawn(name : String?, same_thread : Bool, &block) : Fiber
   abstract def enqueue(fiber : Fiber) : Nil
 
   # the following accessors don’t have to be protected, but their implementation
@@ -335,17 +334,23 @@ abstract class ExecutionContext
   # otherwise we could resume or suspend a fiber on whatever context:
 
   abstract protected def reschedule : Nil
-  abstract protected def sleep(time : Time::Span) : Nil
-  abstract protected def yield : Nil
   abstract protected def resume(fiber : Fiber) : Nil
 
   class SingleThreaded < ExecutionContext
     def initialize(name : String)
       # todo: start one thread
     end
+
+    # todo: implement abstract methods
   end
 
   class MultiThreaded < ExecutionContext
+    # Schedulers are execution contexts so they can be the target of
+    # ExecutionContext.current for thread local scheduling
+    class Scheduler < ExecutionContext
+      # todo: implement abstract methods
+    end
+
     getter name : String
 
     def self.new(name : String, exactly : Int32)
@@ -355,6 +360,13 @@ abstract class ExecutionContext
     def initialize(@name : String, @minimum : Int32, @maximum : Int32)
       # todo: start @minimum threads
     end
+
+    def spawn(name : String?, same_thread : Bool, &block) : Fiber
+      raise RuntimeError.new if same_thread
+      self.spawn(name, &block)
+    end
+
+    # todo: implement abstract methods
   end
 
   class Isolated < SingleThreaded
@@ -364,8 +376,13 @@ abstract class ExecutionContext
       enqueue @fiber
     end
 
-    def spawn(**args, &) : Fiber
-      @spawn_context.spawn(**args) { yield }
+    def spawn(name : String?, &block) : Fiber
+      @spawn_context.spawn(name, &block)
+    end
+
+    def spawn(name : String?, same_thread : Bool, &block) : Fiber
+      raise RuntimeError.new if same_thread
+      @spawn_context.spawn(name, &block)
     end
 
     # todo: prevent enqueue/resume of anything but @fiber
@@ -454,7 +471,7 @@ The most obvious alternative would be to keep the current MT model. Maybe we cou
 
 Another alternative would be to implement Go's model and make it the only possible environment. This might not be the ideal scenario, since Crystal can't preempt a fiber (unlike Go) having specific threads might be a better solution to running CPU heavy computations without blocking anything (if possible).
 
-One last, less obvious solution, could be to drop MT completely, and assume that crystal applications can only live on a single thread. That would heavily simplify synchronization primitives. Parallelism could be achieved with multiple processes and IPC (Inter Process Communication).
+One last, less obvious solution, could be to drop MT completely, and assume that crystal applications can only live on a single thread. That would heavily simplify synchronization primitives. Parallelism could be achieved with multiple processes and IPC (Inter Process Communication), allowing an application to be distributed inside a cluster.
 
 # Prior art
 
