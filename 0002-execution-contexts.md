@@ -426,11 +426,9 @@ The default execution context moving from 'a fiber is always resumed on the same
    - community maintained shards may propose alternative sync primitives when we don’t want thread-safety to squeeze some extra performance inside a single-threaded context.
 
 > [!NOTE]
-> The breaking changes can be postponed to Crystal 2 by making the default execution context to be ST, keep supporting `same_thread: true` for ST while MT would raise, and `same_thread: false` would be a NOOP.
+> The breaking changes can be postponed to Crystal 2 by making the default execution context be ST, keep supporting `same_thread: true` for ST while MT would raise, and `same_thread: false` would be a NOOP. A compilation flag can be introduced to change the default context to be MT in Crystal 1 (e.g. keep `-Dpreview_mt` but consider just `-Dmt`). Crystal 2 would drop the `same_thread` argument, make the default context MT:N, and introduce a `-Dwithout_mt` compilation flag to return to ST to ease the transition.
 >
-> A compilation flag can be introduced to change the default context to be MT in Crystal 1 (e.g. keep `-Dpreview_mt` but consider just `-Dmt`).
->
-> Crystal 2 would drop the `same_thread` argument and make the default context MT.
+> Alternatively, since the `-Dpreview_mt` compilation flag denotes an experimental feature, we could deprecate `same_thread` in a Crystal 1.x release, then make it a NOOP and set the default context to MT:1 in a further Crystal 1.y release. Crystal 2 would then drop the `same_thread` argument and change the default context to MT:N.
 
 # Drawbacks
 
