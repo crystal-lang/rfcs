@@ -30,7 +30,13 @@ In the above example, the main fiber will be resumed 256 times and the nil value
 # Guide-level explanation
 
 Introduce a new WaitGroup class that would keep a counter of how many fibers to wait for, each fiber would report when they're done, and the main fiber only be resumed once all fibers are done.
+
 All methods can be called concurrently as well as in parallel (so the type must be thread-safe), and there may be multiple fibers waiting on the same WaitGroup at the same time.
+
+The following rules must be respected:
+
+1. the counter must be incremented before it can be decremented;
+2. the counter must be incremented before a fiber can wait.
 
 The main usage is very close to how we'd use a Channel(Nil), except that we resume the main fiber once (not N times) and we don't pass any value to a queue (less allocations, less moving data). The intent is also more clear: a fiber is waiting, a fiber reports that it terminated.
 
@@ -50,12 +56,12 @@ class WaitGroup
 
   # Increments the counter by *n* (decrements if n < 0).
   # Resumes pending fibers when the counter reaches 0.
-  # Raises if the counter reaches below 0.
+  # Raises RuntimeError if the counter reaches below 0.
   def add(n : Int) : Nil
 
   # Decrements the counter by 1.
   # Resumes pending fibers when the counter reaches 0.
-  # Raises if the counter reaches below 0.
+  # Raises RuntimeError if the counter reaches below 0.
   def done : Nil
     add(-1)
   end
@@ -66,6 +72,7 @@ class WaitGroup
   def spawn(**args, &) : Fiber
 
   # Blocks the current fiber until the counter reaches 0.
+  # A fiber must be resumed once, and only once.
   def wait : Nil
 end
 ```
@@ -118,13 +125,64 @@ Go has the sync.WaitGroup type. Java has the CountDownLatch class. Both behave i
 The [Earl](https://www.shardbox.org/shards/earl) shard uses a WaitGroup type in its Supervisor and Pool classes to wait on the child fibers it spawned.
 The [Pond](https://github.com/GrottoPress/pond) shard implements a nursery-like spawner with a waiting mecanism.
 
+# Correctness
+
+## Dynamic increments
+
+The following example exhibits a situation where the loop that increments the counter may sometimes yield the current fiber, leading some fibers to call `#done` before the wait group has been fully incremented. With MT and work stealing the fibers may be resumed in parallel, even without yield.
+
+```crystal
+wg = WaitGroup.new
+16.times do
+  wg.add(1)
+  spawn { wg.done }
+  do_sometimes { Fiber.yield }
+end
+wg.wait
+```
+
+By the time the current fiber calls `#wait` we'll have incremented the counter 16 times and decremented it another 16 times; we always increment before we decrement, so we'll never reach a negative counter (that would raise). When the fiber calls `#wait` the counter may be within 0 and 16. If zero the `#wait` method returns immediately, otherwise it suspends the current fiber.
+
+## Dynamic increment & concurrent waiter
+
+The following program exhibits a situation where a waiter will be resumed early:
+
+```crystal
+wg = WaitGroup.new
+
+spawn do
+  wg.wait
+  do_something_after_completion
+end
+
+16.times do
+  wg.add(1)
+  spawn { wg.done }
+  do_sometimes { Fiber.yield }
+end
+```
+
+The behavior of the loop is identical to the previous example: the counter may reach zero multiple times. The difference is that a concurrent fiber will wait for completion, which is acceptable, yet that fiber is enqueued first, can be resumed at any time and call `#wait` concurrently to the current fiber incrementing the counter. If the counter reaches zero early, the waiting fiber will be resumed early :boom:
+
+We can consider this is breaking the "must increment before we wait" rule, and the proper use is to spawn the waiting fiber after the loop; we could statically set the counter once (`WaitGroup.new(16)`) but then it's not dynamic increment anymore.
+
+We can also consider this as _undefined behavior_ and that can happen under more contrived situations.
+
 # Unresolved questions
 
-What should happen when the counter reaches a negative number? The `#add` and `#done` shall raise a RuntimeError exception, but what about waiting fibers? They might be stuck forever.
+**What to do about the undefined behavior explained above?**
 
-- Should the application abort (aka panic)?
-- Should the waiting fibers be resumed _and_ also raise a RuntimeError exception?
+- disable dynamic increments (follows Java's CountDownLatch);
+- raise when trying to increment while there is a waiter;
+- pass a block to `#initialize` during which we are allowed to increment;
+- accept the behavior as a known risk and document to be careful (Go seems to do that).
+
+All solutions but accepting the behavior disable dynamic increments in some way, and would prevent using WaitGroup to implement dynamic supervisors or nurseries.
+
+**What should happen when the counter reaches a negative number?**
+
+The `#add` and `#done` raise a RuntimeError exception (this is an error), but the waiting fibers may be stuck forever. Should the waiting fibers be resumed _and_ also raise a RuntimeError exception?
 
 # Future possibilities
 
-WaitGroup may eventually be used to implement higher level constructs, for example in structured concurrency, or Erlang-like supervisors. It might also be integrated into `select` expressions to wait alongside channels and timeouts.
+WaitGroup may eventually be used to implement higher level constructs, for example structured concurrency, or Erlang-like supervisors. It might also be integrated into `select` expressions to wait alongside channels and timeouts.
