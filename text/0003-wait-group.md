@@ -168,15 +168,6 @@ The execution of fibers is, by design, undeterministic: we don't know when they 
 
 # Unresolved questions
 
-**What to do about the undefined behavior explained above?**
-
-- disable dynamic increments (follows Java's CountDownLatch);
-- raise when trying to increment while there is a waiter;
-- pass a block to `#initialize` during which we are allowed to increment;
-- accept the behavior as a known risk and document to be careful (Go seems to do that).
-
-All solutions but accepting the behavior disable dynamic increments in some way, and would prevent using WaitGroup to implement dynamic supervisors or nurseries.
-
 **What should happen when the counter reaches a negative number?**
 
 The `#add` and `#done` raise a RuntimeError exception (this is an error), but the waiting fibers may be stuck forever. Should the waiting fibers be resumed _and_ also raise a RuntimeError exception?
