@@ -56,12 +56,12 @@ class WaitGroup
 
   # Increments the counter by *n* (decrements if n < 0).
   # Resumes pending fibers when the counter reaches 0.
-  # Raises RuntimeError if the counter reaches below 0.
+  # Resumes pending fibers and raises RuntimeError if the counter reaches below 0.
   def add(n : Int) : Nil
 
   # Decrements the counter by 1.
   # Resumes pending fibers when the counter reaches 0.
-  # Raises RuntimeError if the counter reaches below 0.
+  # Resumes pending fibers and raises RuntimeError if the counter reaches below 0.
   def done : Nil
     add(-1)
   end
@@ -73,6 +73,7 @@ class WaitGroup
 
   # Blocks the current fiber until the counter reaches 0.
   # A fiber must be resumed once, and only once.
+  # Raises RuntimeError if the counter reached below 0.
   def wait : Nil
 end
 ```
@@ -168,9 +169,7 @@ The execution of fibers is, by design, undeterministic: we don't know when they 
 
 # Unresolved questions
 
-**What should happen when the counter reaches a negative number?**
-
-The `#add` and `#done` raise a RuntimeError exception (this is an error), but the waiting fibers may be stuck forever. Should the waiting fibers be resumed _and_ also raise a RuntimeError exception?
+None.
 
 # Future possibilities
 
