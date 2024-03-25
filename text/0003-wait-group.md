@@ -164,9 +164,7 @@ end
 
 The behavior of the loop is identical to the previous example: the counter may reach zero multiple times. The difference is that a concurrent fiber will wait for completion, which is acceptable, yet that fiber is enqueued first, can be resumed at any time and call `#wait` concurrently to the current fiber incrementing the counter. If the counter reaches zero early, the waiting fiber will be resumed early :boom:
 
-We can consider this is breaking the "must increment before we wait" rule, and the proper use is to spawn the waiting fiber after the loop; we could statically set the counter once (`WaitGroup.new(16)`) but then it's not dynamic increment anymore.
-
-We can also consider this as _undefined behavior_ and that can happen under more contrived situations.
+The execution of fibers is, by design, undeterministic: we don't know when they will be executed, and the waiting fiber may be resumed before or while other others increment or decrement the counter. As such, this case can be considered to break the "must increment before we wait" rule. The proper usage is to spawn the waiting fiber after the loop, or to statically set the counter beforehand (`WaitGroup.new(16)`). Concurrent fibers may still increment the counter, as long as they do so before they call `#done`.
 
 # Unresolved questions
 
