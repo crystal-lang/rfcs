@@ -288,12 +288,26 @@ def sleep(time : Time::Span) : Nil
 end
 ```
 
-And the proposed API:
+And the proposed API. There are two distinct modules that each handle a specific
+parts:
+
+1. `ExecutionContext` is the module aiming to implement the public facing API,
+   for context creation and cross context communication; there can only be one
+   instance object of an execution context at a time.
+
+2. `ExecutionContext::Scheduler` is the module aiming to implement internal API
+   for each scheduler; there should be one scheduler per thread, and there may
+   be one or more schedulers at a time for a single execution context (e.g. MT).
+
+There is some overlap between each module, especially around spawning and
+enqueueing fibers, but the context they're expected to run differ: while the
+former need thread safe methods (i.e. cross context enqueues), the latter can
+assume thread local safety.
 
 ```crystal
-abstract class ExecutionContext
+module ExecutionContext
   # the default execution context (always started)
-  class_getter default = MultiThreaded.new("DEFAULT", minimum: 1, maximum: System.cpu_count.to_i)
+  class_getter default = MultiThreaded.new("DEFAULT", size: System.cpu_count.to_i)
 
   def self.current : ExecutionContext
     Thread.current.execution_context
@@ -305,14 +319,14 @@ abstract class ExecutionContext
 
   # Suspends the current fiber and resumes the next runnable fiber.
   def self.reschedule : Nil
-    current.reschedule
+    Scheduler.current.reschedule
   end
 
   # Resumes `fiber` in the execution context. Raises if the fiber
   # doesn't belong to the context.
   def self.resume(fiber : Fiber) : Nil
     if fiber.execution_context == current
-      current.resume(fiber)
+      Scheduler.current.resume(fiber)
     else
       raise RuntimeError.new
     end
@@ -330,25 +344,64 @@ abstract class ExecutionContext
 
   abstract def stack_pool : Fiber::StackPool
   abstract def event_loop : Crystal::EventLoop
+end
 
-  # the following methods must only be called on the current execution context,
-  # otherwise we could resume or suspend a fiber on whatever context:
-
-  abstract protected def reschedule : Nil
-  abstract protected def resume(fiber : Fiber) : Nil
-
-  class SingleThreaded < ExecutionContext
-    def initialize(name : String)
-      # todo: start one thread
-    end
-
-    # todo: implement abstract methods
+module ExecutionContext::Scheduler
+  def self.current : ExecutionContext
+    Thread.current.execution_context_scheduler
   end
 
+  abstract def thread : Thread
+  abstract def execution_context : ExecutionContext
+
+  # the following methods are expected to only be called from the current
+  # execution context scheduler (aka current thread):
+
+  abstract def spawn(name : String?, &block) : Fiber
+  abstract def spawn(name : String?, same_thread : Bool, &block) : Fiber
+  abstract def enqueue(fiber : Fiber) : Nil
+
+  # the following methods must only be called on the current execution context
+  # scheduler, otherwise we could resume or suspend a fiber on whatever context:
+
+  protected abstract def reschedule : Nil
+  protected abstract def resume(fiber : Fiber) : Nil
+
+  # General wrapper of fiber context switch that takes care of the gc rwlock,
+  # releasing the stack of dead fibers safely, ...
+  protected def swapcontext(fiber : Fiber) : Nil
+  end
+end
+```
+
+Then we can implement a number of default execution contexts. For example a
+single threaded context might implement both modules as a single type, taking
+advantage of only having to deal with a single thread. For example:
+
+```crystal
+class ExecutionContext::SingleThreaded
+  include ExecutionContext
+  include ExecutionContext::Scheduler
+
+  def initialize(name : String)
+    # todo: start one thread
+  end
+
+  # todo: implement abstract methods
+end
+```
+
+A multithreaded context should implement both modules as different types, since
+there will be only one execution context but many threads that will each need a
+scheduler. For example:
+
+```crystal
   class MultiThreaded < ExecutionContext
-    # Schedulers are execution contexts so they can be the target of
-    # ExecutionContext.current for thread local scheduling
-    class Scheduler < ExecutionContext
+    include ExecutionContext
+
+    class Scheduler
+      include ExecutionContext::Scheduler
+
       # todo: implement abstract methods
     end
 
@@ -365,7 +418,14 @@ abstract class ExecutionContext
 
     # todo: implement abstract methods
   end
+```
 
+Finally, an isolated context could extend the singlethreaded context, taking
+advantage of its —in practice we might want to have a distinct implementation
+since we should only have to deal with two fibers (one isolate + one main loop
+for its event loop).
+
+```crystal
   class Isolated < SingleThreaded
     def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
       super name
