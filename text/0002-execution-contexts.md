@@ -396,7 +396,7 @@ there will be only one execution context but many threads that will each need a
 scheduler. For example:
 
 ```crystal
-  class MultiThreaded < ExecutionContext
+  class MultiThreaded
     include ExecutionContext
 
     class Scheduler
@@ -426,24 +426,23 @@ since we should only have to deal with two fibers (one isolate + one main loop
 for its event loop).
 
 ```crystal
-  class Isolated < SingleThreaded
-    def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
-      super name
-      @fiber = Fiber.new(name: name, &@func)
-      enqueue @fiber
-    end
-
-    def spawn(name : String?, &block) : Fiber
-      @spawn_context.spawn(name, &block)
-    end
-
-    def spawn(name : String?, same_thread : Bool, &block) : Fiber
-      raise RuntimeError.new if same_thread
-      @spawn_context.spawn(name, &block)
-    end
-
-    # todo: prevent enqueue/resume of anything but @fiber
+class Isolated < SingleThreaded
+  def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
+    super name
+    @fiber = Fiber.new(name: name, &@func)
+    enqueue @fiber
   end
+
+  def spawn(name : String?, &block) : Fiber
+    @spawn_context.spawn(name, &block)
+  end
+
+  def spawn(name : String?, same_thread : Bool, &block) : Fiber
+    raise RuntimeError.new if same_thread
+    @spawn_context.spawn(name, &block)
+  end
+
+  # todo: prevent enqueue/resume of anything but @fiber
 end
 ```
 
