@@ -25,7 +25,33 @@ This would also allow to take control of the abstraction and open possibilities 
 
 # Guide-level explanation
 
-TODO
+`Crystal::EventLoop` exposes a generic and compact interface for actions that are to be performed on Crystals event loop.
+This interface is used in the implementation of asynchronous IO and other evented operations.
+
+Compared to the previous event loop implementation, actions are entirely self-contained instead of scattered between the event loop and the system implementations of `Socket` and `Crystal::System::FileDescriptor`.
+
+For example, the previous, platform-specific implementation of `Socket#unbuffered_read` for Unix systems:
+```cr
+private def unbuffered_read(slice : Bytes) : Int32
+  evented_read(slice, "Error reading socket") do
+    LibC.recv(fd, slice, slice.size, 0).to_i32
+  end
+end
+```
+
+The new, portable implementation of `Socket#unbuffered_read`:
+```cr
+private def unbuffered_read(slice : Bytes) : Int32
+  event_loop.read(self, slice)
+end
+```
+
+The new API initially supports adaptations of the existing backends `libevent` and `IOCP`.
+The next steps are additional implementations based on `io_uring`, as well system selectors (`kqueue` and `epoll`), skipping libevent to improve performance.
+
+Further extensions can widen the scope of the event loop.
+
+`Crystal::Eventloop` is an internal API, thus changing it does not break backwards compatibility.
 
 ## Terminology
 
