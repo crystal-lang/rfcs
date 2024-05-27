@@ -194,11 +194,6 @@ The behaviour for buffered/evented `read` and `write` differs:
 This makes sense for a high-level API because you certainly want to write the entire thing. If you need to fill a buffer, you can use `read_fully`, but often you can keep working on whatever bunch is available right away.\
 I’m not sure if the event loop implementation of `write` should do the same. I’d suggest to change it to work the same as `read`, and return the number of bytes written. The intermediary implementation of `unbuffered_write` can then make sure to iterate until the entire slice is written down. This keeps the event loop implementation minimal and more versatile.
 
-### Type for sizes
-
-Currently, the return type of `unbuffered_read` is unspecified and there’s a bit of a mess. Technically, it can only be `Int32` because that’s the size of `Slice`. We could use the same in the event loop API. However, in order to be future proof for bigger sizes (<https://github.com/crystal-lang/crystal/issues/4011>), we could design the API with `SizeT` instead. Considering it’s a low-level system API, this should be fine and makes a lot of sense.\
-Currently, the only possible values would still be the positive range of `Int32`, so there would be no conversion risk.
-
 #### Socket
 
 One instance of this problem shows already in the core features: The event loop interface has type restrictions of the `Socket` namespace in abstract defs, but `Socket` is not in the core lib.
@@ -208,6 +203,11 @@ Options:
 - Omit those abstract defs (dilutes the interface, so not ideal)
 - Split `EventLoop` interface and add parts of it only with `require “socket”`
 - Add stub declarations for the involved types (`Socket::Handle` and `Socket::Address` - `Socket` itself is only used as parameter type which is technically okay for abstract methods)
+
+### Type for sizes
+
+Currently, the return type of `unbuffered_read` is unspecified and there’s a bit of a mess. Technically, it can only be `Int32` because that’s the size of `Slice`. We could use the same in the event loop API. However, in order to be future proof for bigger sizes (<https://github.com/crystal-lang/crystal/issues/4011>), we could design the API with `SizeT` instead. Considering it’s a low-level system API, this should be fine and makes a lot of sense.\
+Currently, the only possible values would still be the positive range of `Int32`, so there would be no conversion risk.
 
 ### Blocking event loop
 
