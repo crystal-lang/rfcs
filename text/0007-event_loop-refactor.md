@@ -183,6 +183,16 @@ Some activities are managed on the event loop on one platform but not on others.
 
 Do we require these optional methods to be present in all event loop implementations, i.e. they’re part of the global interface? Some impls would then just raise “Not implemented”. Alternatively, we could keep them out of the main interface and check for availability via `event_loop.responds_to?`. or a sub interface (`is_a?(EventLoop::Process)`). Or…?
 
+#### Socket
+
+One instance of this problem shows already in the core features: The event loop interface has type restrictions of the `Socket` namespace in abstract defs, but `Socket` is not in the core lib.
+
+Options:
+
+- Omit those abstract defs (dilutes the interface, so not ideal)
+- Split `EventLoop` interface and add parts of it only with `require “socket”`
+- Add stub declarations for the involved types (`Socket::Handle` and `Socket::Address` - `Socket` itself is only used as parameter type which is technically okay for abstract methods)
+
 ### `read` and `write` behaviour
 
 The behaviour for buffered/evented `read` and `write` differs:
@@ -193,16 +203,6 @@ The behaviour for buffered/evented `read` and `write` differs:
 
 This makes sense for a high-level API because you certainly want to write the entire thing. If you need to fill a buffer, you can use `read_fully`, but often you can keep working on whatever bunch is available right away.\
 I’m not sure if the event loop implementation of `write` should do the same. I’d suggest to change it to work the same as `read`, and return the number of bytes written. The intermediary implementation of `unbuffered_write` can then make sure to iterate until the entire slice is written down. This keeps the event loop implementation minimal and more versatile.
-
-#### Socket
-
-One instance of this problem shows already in the core features: The event loop interface has type restrictions of the `Socket` namespace in abstract defs, but `Socket` is not in the core lib.
-
-Options:
-
-- Omit those abstract defs (dilutes the interface, so not ideal)
-- Split `EventLoop` interface and add parts of it only with `require “socket”`
-- Add stub declarations for the involved types (`Socket::Handle` and `Socket::Address` - `Socket` itself is only used as parameter type which is technically okay for abstract methods)
 
 ### Type for sizes
 
