@@ -106,20 +106,10 @@ module EventLoop
   # Returns `IO::Error` but does not raise.
   abstract def connect(socket : ::Socket, address : ::Socket::Addrinfo | ::Socket::Address, timeout : ::Time::Span?) : IO::Error?
 
-  # Writes at least one byte from *slice* to the socket and continues fiber when
-  # the write is complete.
-  # Returns the number of bytes written.
-  abstract def send(socket : ::Socket, slice : Bytes) : Int32
-
   # Writes at least one byte from *slice* to the socket with a target *address* (UDP)
   # and continues fiber when the write is complete.
   # Returns the number of bytes written.
   abstract def send_to(socket : ::Socket, slice : Bytes, address : ::Socket::Address) : Int32
-
-  # Receives on the socket into *slice*  and continues fiber when the package is
-  # completed
-  # Returns the number of bytes received.
-  abstract def receive(socket : ::Socket, slice : Bytes) : Int32
 
   # Receives on the socket into *slice*  and continues fiber when the package is
   # completed.
