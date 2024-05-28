@@ -72,53 +72,64 @@ Further extensions can widen the scope of the event loop.
 
 # Reference-level explanation
 
-The new `EventLoop` defines the following interface for issuing operations on the event loop:
+The new `EventLoop` interface consits of individual module interfaces which
+defines operations on the event loop related to a specific concept:
 
 ```cr
-module EventLoop
-  # Reads at least one byte from the file descriptor into *slice* and continues
-  # fiber when the read is complete.
-  # Returns the number of bytes read.
-  abstract def read(file : Crystal::System::FileDescriptor, slice : Bytes) : Int32
+abstract class Crystal::System::EventLoop
+  include FileDescriptr
+  include Socket
 
-  # Reads at least one byte from the socket into *slice* and continues fiber
-  # when the read is complete.
-  # Returns the number of bytes read.
-  abstract def read(socket : ::Socket, slice : Bytes) : Int32
+  module FileDescriptor
+    # Reads at least one byte from the file descriptor into *slice* and continues
+    # fiber when the read is complete.
+    # Returns the number of bytes read.
+    abstract def read(file_descriptor : Crystal::System::FileDescriptor, slice : Bytes) : Int32
 
-  # Writes at least one byte from *slice* to the file descriptor and continues
-  # fiber when the write is complete.
-  # Returns the number of bytes written.
-  abstract def write(file : Crystal::System::FileDescriptor, slice : Bytes) : Int32
+    # Writes at least one byte from *slice* to the file descriptor and continues
+    # fiber when the write is complete.
+    # Returns the number of bytes written.
+    abstract def write(file_descriptor : Crystal::System::FileDescriptor, slice : Bytes) : Int32
 
-  # Writes at least one byte from *slice* to the socket and continues fiber
-  # when the write is complete.
-  # Returns the number of bytes written.
-  abstract def write(file : ::Socket, slice : Bytes) : Int32
+    # Closes the *file*.
+    abstract def close(file_descriptor :: Socket) : Nil
+  end
 
-  # Accepts an incoming TCP connection on the socket and continues fiber when a
-  # connection is available.
-  # Returns a handle to the socket for the new connection.
-  abstract def accept(socket : ::Socket) : ::Socket::Handle?
+  module Socket
+    # Reads at least one byte from the socket into *slice* and continues fiber
+    # when the read is complete.
+    # Returns the number of bytes read.
+    abstract def read(socket : ::Socket, slice : Bytes) : Int32
 
-  # Opens a connection on *socket* to the target *address* and continues fiber
-  # when the connection has been established.
-  # Returns `IO::Error` but does not raise.
-  abstract def connect(socket : ::Socket, address : ::Socket::Addrinfo | ::Socket::Address, timeout : ::Time::Span?) : IO::Error?
+    # Writes at least one byte from *slice* to the socket and continues fiber
+    # when the write is complete.
+    # Returns the number of bytes written.
+    abstract def write(socket : ::Socket, slice : Bytes) : Int32
 
-  # Writes at least one byte from *slice* to the socket with a target *address* (UDP)
-  # and continues fiber when the write is complete.
-  # Returns the number of bytes written.
-  abstract def send_to(socket : ::Socket, slice : Bytes, address : ::Socket::Address) : Int32
+    # Accepts an incoming TCP connection on the socket and continues fiber when a
+    # connection is available.
+    # Returns a handle to the socket for the new connection.
+    abstract def accept(socket : ::Socket) : ::Socket::Handle?
 
-  # Receives on the socket into *slice*  and continues fiber when the package is
-  # completed.
-  # Returns a tuple containing the number of bytes received and the source address
-  # of the packet (UDP).
-  abstract def receive_from(socket : ::Socket, slice : Bytes) : Tuple(Int32, ::Socket::Address)
+    # Opens a connection on *socket* to the target *address* and continues fiber
+    # when the connection has been established.
+    # Returns `IO::Error` but does not raise.
+    abstract def connect(socket : ::Socket, address : ::Socket::Addrinfo | ::Socket::Address, timeout : ::Time::Span?) : IO::Error?
 
-  # Closes the *resource*.
-  abstract def close(resource) : Nil
+    # Writes at least one byte from *slice* to the socket with a target *address* (UDP)
+    # and continues fiber when the write is complete.
+    # Returns the number of bytes written.
+    abstract def send_to(socket : ::Socket, slice : Bytes, address : ::Socket::Address) : Int32
+
+    # Receives on the socket into *slice*  and continues fiber when the package is
+    # completed.
+    # Returns a tuple containing the number of bytes received and the source address
+    # of the packet (UDP).
+    abstract def receive_from(socket : ::Socket, slice : Bytes) : Tuple(Int32, ::Socket::Address)
+
+    # Closes the *socket*.
+    abstract def close(socket :: Socket) : Nil
+  end
 end
 ```
 
