@@ -132,6 +132,11 @@ module EventLoop
 end
 ```
 
+Notable differences from the previous API:
+
+* The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
+  This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write *all* bytes of the given slice.
+
 # Drawbacks
 
 None.
@@ -192,17 +197,6 @@ Options:
 - Omit those abstract defs (dilutes the interface, so not ideal)
 - Split `EventLoop` interface and add parts of it only with `require “socket”`
 - Add stub declarations for the involved types (`Socket::Handle` and `Socket::Address` - `Socket` itself is only used as parameter type which is technically okay for abstract methods)
-
-### `read` and `write` behaviour
-
-The behaviour for buffered/evented `read` and `write` differs:
-
-- `read` is expected to read up to `slice.size` bytes and return the number of bytes that were actually read
-
-- `write` is expected to write _all_ of `slice`. It returns `Nil`.
-
-This makes sense for a high-level API because you certainly want to write the entire thing. If you need to fill a buffer, you can use `read_fully`, but often you can keep working on whatever bunch is available right away.\
-I’m not sure if the event loop implementation of `write` should do the same. I’d suggest to change it to work the same as `read`, and return the number of bytes written. The intermediary implementation of `unbuffered_write` can then make sure to iterate until the entire slice is written down. This keeps the event loop implementation minimal and more versatile.
 
 ### Type for sizes
 
