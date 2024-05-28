@@ -134,6 +134,8 @@ end
 
 Notable differences from the previous API:
 
+* Timeout and resume events are not on the event loop. The scheduler is supposed to handle them directly.
+  `Crystal::System::Event` gets removed as this was its only use case.
 * The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
   This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write *all* bytes of the given slice.
 
@@ -212,10 +214,6 @@ When evented operations are not available (for example file system operations or
 This works well with the libevent implementation because if the lib calls never return `EAGAIN`, the code works entirely without libevent. The WASI implementation raises when trying to create a resume event, but that never happens when IO operations are all blocking (`~O_NONBLOCK`). For that to happen, we’d need to explicitly set the IO to blocking.
 
 Alternative idea: If polling is unavailable, we could consider sleeping the fiber for some time and let it retry again **🤷**
-
-### Timeout and Resume events
-
-Should we put them entirely into the scheduler / event loop driver? We’re already doing that in IOCP. Managing these events entirely in Crystal would allow us to drop `Crystal::System::Event` which is only really needed for libevent.
 
 ### `#connect` timeout
 
