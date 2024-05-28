@@ -73,10 +73,35 @@ Further extensions can widen the scope of the event loop.
 # Reference-level explanation
 
 The new `EventLoop` interface consits of individual module interfaces which
-defines operations on the event loop related to a specific concept:
+defines operations on the event loop related to a specific concept.
+The `run` and `interrupt` methods are shown for completenes, but they are part
+of [RFC 0002](https://github.com/crystal-lang/rfcs/pull/2) ([#14568](https://github.com/crystal-lang/crystal/pull/14568)).
 
 ```cr
 abstract class Crystal::System::EventLoop
+  # Runs the loop.
+  #
+  # Returns immediately if events are activable. Set `blocking` to false to
+  # return immediately if there are no activable events; set it to true to wait
+  # for activable events, which will block the current thread until then.
+  #
+  # Returns `true` on normal returns (e.g. has activated events, has pending
+  # events but blocking was false) and `false` when there are no registered
+  # events.
+  abstract def run(blocking : Bool) : Bool
+
+  # Tells a blocking run loop to no longer wait for events to activate. It may
+  # for example enqueue a NOOP event with an immediate (or past) timeout. Having
+  # activated an event, the loop shall return, allowing the blocked thread to
+  # continue.
+  #
+  # Should be a NOOP when the loop isn't running or is running in a nonblocking
+  # mode.
+  #
+  # NOTE: we assume that multiple threads won't run the event loop at the same
+  #       time in parallel, but this assumption may change in the future!
+  abstract def interrupt : Nil
+
   include FileDescriptor
   include Socket
 
