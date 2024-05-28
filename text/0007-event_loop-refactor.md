@@ -77,7 +77,7 @@ defines operations on the event loop related to a specific concept:
 
 ```cr
 abstract class Crystal::System::EventLoop
-  include FileDescriptr
+  include FileDescriptor
   include Socket
 
   module FileDescriptor
