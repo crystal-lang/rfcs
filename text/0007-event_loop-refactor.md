@@ -217,8 +217,8 @@ Alternative idea: If polling is unavailable, we could consider sleeping the fibe
 
 ### `#connect` timeout
 
-`Socket#connect` is the only method with a timeout parameter. This seems weird. All other timeouts are configured on the IO instance.\
-It probably makes sense to standardize, introduce a new property \`Socket#connect\_timeout\`, and deprecate the def parameter.
+`Socket#connect` is the only method with a timeout parameter. This seems weird. All other timeouts are configured on the IO instance.
+It probably makes sense to standardize, introduce a new property `Socket#connect_timeout`, and deprecate the def parameter.
 
 ### Bulk events without fibers
 
