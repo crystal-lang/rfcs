@@ -117,7 +117,7 @@ abstract class Crystal::System::EventLoop
     abstract def write(file_descriptor : Crystal::System::FileDescriptor, slice : Bytes) : Int32
 
     # Closes the *file*.
-    abstract def close(file_descriptor :: Socket) : Nil
+    abstract def close(file_descriptor : Crystal::System::FileDescriptor) : Nil
   end
 
   module Socket
