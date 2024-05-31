@@ -106,14 +106,19 @@ abstract class Crystal::System::EventLoop
   include Socket
 
   module FileDescriptor
-    # Reads at least one byte from the file descriptor into *slice* and continues
-    # fiber when the read is complete.
-    # Returns the number of bytes read.
+    # Reads at least one byte from the file descriptor into *slice*.
+    #
+    # Blocks the current fiber if no data is available for reading, continuing when available. Otherwise returns immediately.
+    #
+    # Returns the number of bytes read (up to *slice.size*).
+    # Returns 0 when EOF is reached.
     abstract def read(file_descriptor : Crystal::System::FileDescriptor, slice : Bytes) : Int32
 
-    # Writes at least one byte from *slice* to the file descriptor and continues
-    # fiber when the write is complete.
-    # Returns the number of bytes written.
+    # Writes at least one byte from *slice* to the file descriptor.
+    #
+    # Blocks the current fiber if the file descriptor isn't ready for writing, continuing when ready. Otherwise returns immediately.
+    #
+    # Returns the number of bytes written (up to *slice.size*).
     abstract def write(file_descriptor : Crystal::System::FileDescriptor, slice : Bytes) : Int32
 
     # Closes the *file*.
@@ -144,7 +149,7 @@ abstract class Crystal::System::EventLoop
 
     # Accepts an incoming TCP connection on the socket.
     #
-    # Blocks the current fiber if no connection is watiting, continuing when one
+    # Blocks the current fiber if no connection is waiting, continuing when one
     # becomes available. Otherwise returns immediately.
     #
     # Returns a handle to the socket for the new connection.
@@ -154,7 +159,7 @@ abstract class Crystal::System::EventLoop
     #
     # Blocks the current fiber and continues when the connection is established.
     #
-    # Returns `IO::Error` in case of en error. The caller is responsible for
+    # Returns `IO::Error` in case of an error. The caller is responsible for
     # raising it as an exception if necessary.
     abstract def connect(socket : ::Socket, address : ::Socket::Addrinfo | ::Socket::Address, timeout : ::Time::Span?) : IO::Error?
 
@@ -170,7 +175,7 @@ abstract class Crystal::System::EventLoop
     # Receives at least one byte from the socket into *slice*, capturing the
     # source address.
     #
-    # Blocks the current fiber if if no data is available for reading, continuing
+    # Blocks the current fiber if no data is available for reading, continuing
     # when available. Otherwise returns immediately.
     #
     # Returns a tuple containing the number of bytes received (up to `slice.size`)
