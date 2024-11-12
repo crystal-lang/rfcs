@@ -75,7 +75,7 @@ The logic of the event loop doesn't change much from the one based on
   fiber (one at a time).
 
 Unlike `libevent` which adds and removes the `fd` to and from the polling system
-on every blocking operation, the lifetime event loop driver adds ever `fd`
+on every blocking operation, the lifetime event loop driver adds every `fd`
 _once_ and only removes it when closing the `fd`.
 
 The argument is that being notified for readiness (which happens only once
@@ -209,8 +209,7 @@ To avoid keeping pointers to the IO object that could prevent the GC from
 collecting lost IO objects, this proposal introduces *Poll Descriptor* objects
 (the name comes from Go's netpoll) that keep the list of readers and writers and
 don't point back to the IO object. The GC collecting an IO object is fine: the
-finalizer will close the `fd` and tell the event loop to cleanup the ~~`fd`
-resources~~ associated *Poll Descriptor* (so we can safely reuse the `fd`).
+finalizer will close the `fd` and tell the event loop to cleanup the associated *Poll Descriptor* (so we can safely reuse the `fd`).
 
 To avoid pushing raw pointers into the kernel data structures, and to quickly
 retrieve the *Poll Descriptor* from a mere `fd`, but also to avoid programming
@@ -241,7 +240,7 @@ close/remove the `fd` from each event loop instances; this avoids cross event
 loop enqueues that are much slower than local enqueues in execution contexts.
 
 A limitation is that trying to move a `fd` from one event loop to another while
-there are pending waiters will raise an exception. We can't move timeout events
+there are pending waiters will raise an exception. We could move timeout events
 along with the `fd` from one event loop instance to another one, but that would
 also break the "always local enqueues" benefit.
 
