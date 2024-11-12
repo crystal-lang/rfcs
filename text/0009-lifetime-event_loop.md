@@ -143,7 +143,8 @@ Compile time flags allow choosing a different event loop driver.
 - `-Devloop=kqueue`: Use `kqueue` (on *BSD);
 
 The event loop drivers on Windows and WebAssembly (WASI) are not affected by
-this change.
+this change. The event loop driver for Windows already integrates directly with
+the system selector (`IOCP`).
 
 ## Terminology
 
