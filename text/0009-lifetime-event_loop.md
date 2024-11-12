@@ -94,6 +94,12 @@ multiple fibers.
 
 ### Multi-Threading
 
+> [!CAUTION]
+>
+> Moving file descriptors with pending operations between event loop instances –
+> i.e. between threads with `-Dpreview_md` – is an error. If you need this
+> behaviour, it's best to stay with `libevent` via `-Devloop=libevent`.
+
 It supports the multi-threading preview (`-Dpreview_mt`) with one event loop
 instance per thread (scheduler requirement).
 
