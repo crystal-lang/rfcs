@@ -212,6 +212,8 @@ Notable differences from the previous API:
   `Crystal::System::Event` gets removed as this was its only use case.
 * The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
   This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write *all* bytes of the given slice.
+* `Socket` is not part of the core library, so references to its types (e.g. in type restrictions) would not resolve.
+  The `EventLoop` interface is split into individual modules and the `Socket` module is always defined, but only filled with abstract defs when `socket.cr` is explicitly required.
 
 # Drawbacks
 
@@ -263,16 +265,6 @@ Should events from the Crystal runtime be part of the event loop as well?
 Some activities are managed on the event loop on one platform but not on others. Example would be `Process#wait` which goes through IOCP on Windows but on Unix it’s part of signal handling. (Note: Perhaps we could try to get that on the event loop on Unix as well? **🤔** But there are other examples of system differences)
 
 Do we require these optional methods to be present in all event loop implementations, i.e. they’re part of the global interface? Some impls would then just raise “Not implemented”. Alternatively, we could keep them out of the main interface and check for availability via `event_loop.responds_to?`. or a sub interface (`is_a?(EventLoop::Process)`). Or…?
-
-#### Socket
-
-One instance of this problem shows already in the core features: The event loop interface has type restrictions of the `Socket` namespace in abstract defs, but `Socket` is not in the core lib.
-
-Options:
-
-- Omit those abstract defs (dilutes the interface, so not ideal)
-- Split `EventLoop` interface and add parts of it only with `require “socket”`
-- Add stub declarations for the involved types (`Socket::Handle` and `Socket::Address` - `Socket` itself is only used as parameter type which is technically okay for abstract methods)
 
 ### Type for sizes
 
