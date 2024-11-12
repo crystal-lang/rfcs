@@ -8,8 +8,8 @@
 # Summary
 
 Integrate the Crystal event loop directly with system selectors,
-[`epoll`](https://linux.die.net/man/7/epoll) (Linux) and
-[`kqueue`](https://man.freebsd.org/cgi/man.cgi?kqueue) (*BSD, macOS) instead of
+[`epoll`](https://linux.die.net/man/7/epoll) (Linux, Android) and
+[`kqueue`](https://man.freebsd.org/cgi/man.cgi?kqueue) (BSDs, macOS) instead of
 going through [`libevent`](https://libevent.org/).
 
 # Motivation
@@ -129,6 +129,7 @@ don't share a `fd` between contexts.
 
 The lifetime event loop driver is supported on:
 
+- Android
 - FreeBSD
 - Linux
 - macOS
