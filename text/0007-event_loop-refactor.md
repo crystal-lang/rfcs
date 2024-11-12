@@ -237,8 +237,6 @@ TBD
 
 - Should the implementation of the Crystal event loop be in the same type as the bindings for the system selector? (i.e. are `#read(Socket, Bytes)` and `#create_resume_event(Fiber)` in the same place?)
 
-- How many event loops are there gonna be in relation to execution contexts? ([ysbaddaden/execution_context#7](https://github.com/ysbaddaden/execution_context/issues/7))
-
 ### What’s the scope of the Crystal event loop?
 
 This is a list of operations which we expect to go through the event loop:
@@ -246,7 +244,7 @@ This is a list of operations which we expect to go through the event loop:
 - File descriptor: read, write
 - Socket: read, write, accept, connect, send, receive
 - Process: wait (Windows)
--
+
 Potential extensions:
 
 - DNS resolution? ([Async DNS resolution #13619](https://github.com/crystal-lang/crystal/issues/13619))
@@ -292,7 +290,7 @@ For some applications it might be useful to interact with the event loop directl
 
 - [Fiber usage in high IO application](https://forum.crystal-lang.org/t/fiber-usage-in-high-io-application/6689)
 
-### **#Integration with** `select`
+### Integration with `select`
 
 `select` actions are implemented completely independent of the event loop, yet they operate in a similar domain (wait for something to happen). These actions are special in that they ensure atomicity. When waiting on multiple actions simultaneously, it’s guaranteed that only one of them executes. This probably won’t be exactly possible with most event loop features.
 
