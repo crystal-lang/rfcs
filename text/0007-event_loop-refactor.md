@@ -305,4 +305,4 @@ end
 # Future possibilities
 
 * Alternative event loop implementations based directly on the system selectors
-  instead of `libevent`.
+  instead of `libevent` ([RFC 0009](https://github.com/crystal-lang/rfcs/pull/9))
