@@ -260,11 +260,6 @@ Some activities are managed on the event loop on one platform but not on others.
 
 Do we require these optional methods to be present in all event loop implementations, i.e. they’re part of the global interface? Some impls would then just raise “Not implemented”. Alternatively, we could keep them out of the main interface and check for availability via `event_loop.responds_to?`. or a sub interface (`is_a?(EventLoop::Process)`). Or…?
 
-### Type for sizes
-
-Currently, the return type of `unbuffered_read` is unspecified and there’s a bit of a mess. Technically, it can only be `Int32` because that’s the size of `Slice`. We could use the same in the event loop API. However, in order to be future proof for bigger sizes (<https://github.com/crystal-lang/crystal/issues/4011>), we could design the API with `SizeT` instead. Considering it’s a low-level system API, this should be fine and makes a lot of sense.\
-Currently, the only possible values would still be the positive range of `Int32`, so there would be no conversion risk.
-
 ### Blocking event loop
 
 There should be a basic implementation with blocking syscalls when non-blocking operation is unavailable. This would currently be used for WASI, for example, and allows IO to work, although not as efficiently.
@@ -302,3 +297,8 @@ end
 
 * Alternative event loop implementations based directly on the system selectors
   instead of `libevent` ([RFC 0009](https://github.com/crystal-lang/rfcs/pull/9))
+
+### Type for sizes
+
+Currently, the return type of `read` is `Int32` because that’s the size of `Slice`. In order to be future proof for bigger sizes (<https://github.com/crystal-lang/crystal/issues/4011>), we could use `SizeT` instead. Considering it’s a low-level system API, this should be fine and makes some sense.
+Currently, the only possible values would still be the positive range of `Int32`, so there would be no conversion risk.
