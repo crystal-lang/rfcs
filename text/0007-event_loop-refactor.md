@@ -219,10 +219,6 @@ Notable differences from the previous API:
 
 None.
 
-# Rationale and alternatives
-
-TBD
-
 # Prior art
 
 ## References
