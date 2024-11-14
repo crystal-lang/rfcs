@@ -305,7 +305,7 @@ on its own motivate an RFC. Please also take into consideration that Crystal
 sometimes intentionally diverges from common language features.
 -->
 
-Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design.
+Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design, with the difference that Go only has a single event loop instance per process.
 
 # Unresolved questions
 
