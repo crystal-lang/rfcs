@@ -233,10 +233,6 @@ TBD
 
 # Unresolved questions
 
-- Distinction between generic system APIs and event loop-specifics is not always clear.
-
-- Should the implementation of the Crystal event loop be in the same type as the bindings for the system selector? (i.e. are `#read(Socket, Bytes)` and `#create_resume_event(Fiber)` in the same place?)
-
 ### What’s the scope of the Crystal event loop?
 
 This is a list of operations which we expect to go through the event loop:
