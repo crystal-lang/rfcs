@@ -258,6 +258,8 @@ exception may be a server socket with multiple accepting fibers. In that case
 you'll need to make sure the fibers are on the same thread (`preview_mt`) or
 execution context.
 
+If this ever proves to be an issue, we can think of solutions. For example migrating timeouts along, triaging external fibers from local ones, and more, of course at the expense of some performance.
+
 # Drawbacks
 
 <!--
