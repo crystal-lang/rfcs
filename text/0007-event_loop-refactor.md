@@ -219,6 +219,14 @@ Notable differences from the previous API:
 
 None.
 
+# Rationale and alternatives
+
+The rationale is to create our own system independent event loop, and to keep it as abstract as possible to support any kinds of models (asynchronous, polling) over the actual operations.
+
+Alternatives, as they exist today, leak system specifics into the stdlib types (see `IO::Evented`).
+
+The proposed model completely eliminates that by creating a standardized interface.
+
 # Prior art
 
 ## References
