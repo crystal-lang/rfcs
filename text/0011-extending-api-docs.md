@@ -58,8 +58,8 @@ If a namespace has the `:nodoc:` directive, then the `:showdoc:` directive will 
 ```crystal
 # :nodoc:
 struct MyStruct
-  # This will not show up in API docs
   # :showdoc:
+  # This will not show up in API docs
   struct MyStructChild
   end
 end
