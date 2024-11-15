@@ -87,6 +87,25 @@ This cannot be done in a library instead as it requires updates to the parser it
 
 There is a [PR](https://github.com/crystal-lang/crystal/pull/14816) implementing a similar feature, however it uses the generation-time flag method mentioned above, instead of the `:showdoc:` directive.
 
+## Ruby / YARD
+
+Ruby (via YARD) has global flags for showing protected and private methods when generating documentation. By default they are hidden.
+Each project can have a `.docopts` file that specifies the options to use when building the docs, making it so specifying the flags every time is unnecessary.
+Example of protected method: https://rubydoc.info/gems/yard/0.9.37/YARD/Handlers/Ruby/MixinHandler#process_mixin-instance_method
+
+Rubys FFI generates normal classes so there's no distinction for them when generating API documentation. Example: https://rubydoc.info/gems/raylib-bindings/Raylib/Vector2
+
+## Rust
+
+Rust documents all public types by default. There is a flag for adding private types to the API docs, see the discussion [here](https://github.com/rust-lang/cargo/issues/1520).
+
+## Elixir
+
+Elixir documents FFI bindings, see https://hexdocs.pm/rayex/Rayex.Core.html#begin_drawing/0.
+
+It does not have a method for documenting private methods, see https://hexdocs.pm/elixir/1.12/writing-documentation.html#documentation-code-comments.
+> Because private functions cannot be accessed externally, Elixir will warn if a private function has a @doc attribute and will discard its content.
+
 # Unresolved questions
 
 TBD
