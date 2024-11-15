@@ -5,8 +5,7 @@
 
 # Summary
 
-This RFC would add a directive `:showdoc:` that would allow private / protected methods and objects,
-as well as C lib, fun, enum, etc, to show up in API documentation.
+We propose the addition of a `:showdoc:` directive that will allow to document normally undocumented types and methods, including libs and external functions.
 
 # Motivation
 
