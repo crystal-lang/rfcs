@@ -13,6 +13,7 @@ Currently, API documentation is not generated for private/protected methods/obje
 This was originally done as these (typically) should not be used, however, this is not always the case.
 When inheriting from a class that has a protected method that is intended to be implemented, it is useful
 to know that method exists, and what parameters / types it has, without needing to refer to the source code.
+
 Another use case is for libraries such as [raylib.cr](https://github.com/sol-vin/raylib-cr), where developing a
 "Crystal" interface to them using classes and structs would be prohibitive, and currently requires diving
 into the source code in order to figure out what methods are available.
