@@ -21,7 +21,7 @@ into the source code in order to figure out what methods are available.
 # Guide-level explanation
 
 The `:showdoc:` directive can be added to private or protected objects, as well as C lib binding objects, to have them show up in API documentation.
-By default, these are hidden and should only be shown if they're intended to be used directly.
+By default, these are hidden and should only be shown if they're explicitly intended to be used.
 
 In this example, when generating API documentation, `Foo.foo` will be included even though it is a private method.
 
