@@ -28,6 +28,8 @@ In this example, when generating API documentation, `Foo.foo` will be included e
 ```crystal
 module Foo
   # :showdoc:
+  #
+  # Here is some documentation for `Foo.foo`
   private def self.foo
   end
 end
@@ -37,6 +39,9 @@ This also works for C lib, struct, enum, etc; everything in the `FooLib` namespa
 
 ```crystal
 # :showdoc:
+#
+# Writing documentation for code is really important and useful,
+# not just for others but also your future self.
 lib FooLib
   fun my_function(value : Int32) : Int32
 
@@ -59,6 +64,7 @@ If a namespace has the `:nodoc:` directive, then the `:showdoc:` directive will 
 # :nodoc:
 struct MyStruct
   # :showdoc:
+  #
   # This will not show up in API docs
   struct MyStructChild
   end
