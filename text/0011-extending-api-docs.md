@@ -15,7 +15,7 @@ When inheriting from a class that has a protected method that is intended to be 
 to know that method exists, and what parameters / types it has, without needing to refer to the source code.
 
 Another use case is for libraries such as [raylib.cr](https://github.com/sol-vin/raylib-cr), where developing a
-"Crystal" interface to them using classes and structs would be prohibitive, and currently requires diving
+"Crystal" interface to them using classes and structs would be prohibitive, and expose the lib bindings as part of the public API. It currently requires diving
 into the source code in order to figure out what methods are available.
 
 # Guide-level explanation
