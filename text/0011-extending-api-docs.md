@@ -5,7 +5,7 @@
 
 # Summary
 
-We propose the addition of a `:showdoc:` directive that will allow to document normally undocumented types and methods, including libs and external functions.
+We propose the addition of a `:showdoc:` directive that will allow to document normally undocumented types and methods.
 
 # Motivation
 
