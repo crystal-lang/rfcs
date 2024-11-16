@@ -10,7 +10,7 @@ We propose the addition of a `:showdoc:` directive that will allow to document n
 # Motivation
 
 Currently, API documentation is not generated for private/protected methods/objects or C lib binding objects.
-This was originally done as these (typically) should not be used, however, this is not always the case.
+This was originally done as these (typically) should not be used externally, however, this is not always the case.
 When inheriting from a class that has a protected method that is intended to be implemented, it is useful
 to know that method exists, and what parameters / types it has, without needing to refer to the source code.
 
