@@ -185,12 +185,26 @@ explain more fully how the detailed proposal makes those examples work.
 -->
 
 The run loop first waits on `epoll`/`kqueue`, canceling IO timeouts as it
-resumes fibers, then proceeds to process timers.
+resumes the ready fibers, then proceeds to process timers.
 
-The epoll/kqueue call doesn't wait until the next ready timer (it could without
-MT and with `preview_mt` but can't for execution contexts). It instead relies on
-`timerfd` on Linux and `EVTFILT_TIMER` on BSD to interrupt a blocking event loop
-wait. It also allows to circumvent the 1ms precision of `epoll_wait` on Linux.
+The `epoll_wait` and `kevent` syscalls can wait until a timeout is reached.
+The event loop implementations don't use the timeout and instead wait forever
+(blocking) or don't wait at all (nonblocking). There are a couple reasons:
+
+1. Epoll also has a minimum timeout precision of 1ms, but what if the next
+   expiring timer is in 10us?
+
+3. In a single threaded context we could set the timeout to the next expiring
+   timer; that would work for no MT as well as `preview_mt`, but if we share
+   the event loop instance between threads —which will be the case with
+   execution contexts— then we have a race condition: another thread can set a
+   sooner expiring timer just before we'd wait, and a mutex wouldn't help to
+   solve (can't keep it locked until the syscall returns).
+
+Instead, we use an extra `timerfd` (Linux) and `EVFILT_TIMER` (macOS, *BSD)
+that have sub-millisecond precision (except for DragonFlyBSD), and that we can
+update in parallel when the next expiring timer has changed, using a mutex to
+prevent parallel races.
 
 ## Components
 
