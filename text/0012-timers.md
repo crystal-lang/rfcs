@@ -1,6 +1,6 @@
 - Feature Name: `timers`
 - Start Date: 2024-11-22
-- RFC PR: [crystal-lang/rfcs#0000](https://github.com/crystal-lang/rfcs/pull/0000)
+- RFC PR: [crystal-lang/rfcs#12](https://github.com/crystal-lang/rfcs/pull/12)
 - Issue: ...
 
 # Summary
