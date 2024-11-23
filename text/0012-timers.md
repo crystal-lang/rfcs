@@ -86,7 +86,7 @@ However they differ in these other traits:
 
    - low precision (some milliseconds is acceptable);
    - fast `delete` operation (likely to be cancelled);
-   - must accomodate many timeouts at any given time (e.g. c10k problem).
+   - must accomodate many timeouts at any given time (e.g. [c10k problem](https://en.wikipedia.org/wiki/C10k_problem)).
 
 2. Timers (sleeps):
 
