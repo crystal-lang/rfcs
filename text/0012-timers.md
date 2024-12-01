@@ -164,7 +164,7 @@ never balloons.
 Despite the drawback on the `delete-min` operation, a benchmark using mixed
 operations (insert + delete-min, insert + delete) led the pairing heap to have
 the best overall performance. See the [benchmark
-results](https://gist.github.com/ysbaddaden/a5d98c88105ea58ba85f4db1ed814d70à)
+results](https://gist.github.com/ysbaddaden/a5d98c88105ea58ba85f4db1ed814d70)
 for more details.
 
 Since it performs well for timers (add / delete-min) and timeouts (add / delete
