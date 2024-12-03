@@ -76,16 +76,20 @@ end
 - The parser will need to be updated to support doc comments for C lib binding objects and the `:showdoc:` directive
 - The documentation generator will need to be updated to support C lib binding objects and private/protected objects
 - If an object has a `:showdoc:` directive and its parent namespace is shown, then it should be shown too
-
-TBD
+- If a C lib has a `:showdoc:` directive, everything in the namespace should be shown, except for things marked with `:nodoc:`
+- If an objects parent namespace has the `:nodoc:` directive, the `:showdoc:` directive will have no effect
+- C functions should include both the original function name and the Crystal name in the documentation
+- Some experimentation into a different implementation was done [here](https://github.com/crystal-lang/crystal/compare/master...nobodywasishere:crystal:nobody/docs-include-more)
 
 # Drawbacks
 
-TBD
+Allowing showing private or protected methods in documentation may lead to confusion from users when they try to use those methods (and they don't work).
 
 # Rationale and alternatives
 
 The other design that has been considered is having flags on the documentation generator itself that enable showing of private / protected objects and C lib objects in the API documentation. We chose not to go with this design as it required flags to be added at generation time, and only generated all or none (no granularity in what is shown).
+
+Another alternative is a more sophisticated syntax for documentation metadata, like [sections](https://github.com/crystal-lang/crystal/issues/1312). This would require more complex documentation comment parsing but would allow for more complex and sophisticated documentation features. Inspiration could be taken from [rST field lists](https://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html#field-lists). The `:nodoc:` and `:showdoc:` directives could've been implemented as annotations instead, but this wouldn't allow for features like sections.
 
 This cannot be done in a library instead as it requires updates to the parser itself. This proposal makes Crystal code easier to understand, as it increases the amount and quality of API documentation.
 
@@ -112,10 +116,7 @@ Elixir documents FFI bindings, see https://hexdocs.pm/rayex/Rayex.Core.html#begi
 It does not have a method for documenting private methods, see https://hexdocs.pm/elixir/1.12/writing-documentation.html#documentation-code-comments.
 > Because private functions cannot be accessed externally, Elixir will warn if a private function has a @doc attribute and will discard its content.
 
-# Unresolved questions
-
-TBD
-
 # Future possibilities
 
-TBD
+- A `semantic` crystal tool that outputs all Crystal objects regardless of directives
+- More documentation directives such as `:section: Section Name` or `:include: path/to/file.md`
