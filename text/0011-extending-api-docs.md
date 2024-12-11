@@ -5,7 +5,7 @@
 
 # Summary
 
-We propose the addition of a `:showdoc:` directive that will allow to document normally undocumented types and methods.
+Introduce a `:showdoc:` directive for the doc generator which includes normally undocumented types and methods in the API documentation.
 
 # Motivation
 
