@@ -1,7 +1,7 @@
 - Feature Name: `execution_contexts`
 - Start Date: 2024-02-05
 - RFC PR: [crystal-lang/rfcs#2](https://github.com/crystal-lang/rfcs/pull/2)
-- Issue: -
+- Issue: [crystal-lang/crystal#15342](https://github.com/crystal-lang/crystal/issues/15342)
 
 # Summary
 
