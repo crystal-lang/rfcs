@@ -145,7 +145,7 @@ end
 ## Data structure: min pairing heap
 
 A min-heap is a simple, fast and efficient tree data structure, that keeps the
-smaller value as the HEAD of the tree (the rest isn't ordered). This is enough
+smallest value as the HEAD of the tree (the rest isn't ordered). This is enough
 for timers in general as we only really need to know about the next expiring
 timer, we don't need the list to be fully ordered.
 
