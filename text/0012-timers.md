@@ -91,7 +91,7 @@ However they differ in these other traits:
 
    - high precision (sub-millisecond and below is desireable);
    - no need for `delete` (never cancelled);
-   - more reasonable number of timers (**BOLD CLAIM TO BE VERIFIED**)
+   - more reasonable number of timers compared to timeouts (**BOLD CLAIM TO BE VERIFIED**)
 
 These requirements can help us to shape which data structure(s) to choose.
 
