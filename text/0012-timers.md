@@ -64,9 +64,8 @@ paper about the introduction of high resolution timers in the Linux kernel:
 2. **Timers**: Timers are used to schedule ongoing events. They can have high
    resolution requirements, and usually expire.
 
-   In crystal such a `timer` is created when we call `sleep(Time::Span)` or
-   `Fiber.yield` that behaves as a `sleep(0.seconds)`. There are no public API
-   to cancel a sleep, and they always expire.
+   In crystal such a `timer` is created when we call `sleep(Time::Span)`.
+   There is no public API to cancel a sleep, and they always expire.
 
    The high resolution is because timers are expected to run at the scheduled
    time. As explained above this might be hard, but we can still try to avoid
