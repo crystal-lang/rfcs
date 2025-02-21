@@ -15,7 +15,7 @@ where we remove the libevent dependency, that we already didn't use on Windows,
 we need to handle the correct execution of timers ourselves.
 
 We must handle timers, we must store them into efficient data structure(s), and
-we must suppor the following operations:
+we must support the following operations:
 
 - create a timer;
 - cancel a timer;
