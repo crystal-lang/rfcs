@@ -1,8 +1,8 @@
 ---
 Feature Name: event_loop-refactor
 Start Date: 2023-05-02
-RFC PR: "[crystal-lang/rfcs#0007](https://github.com/crystal-lang/rfcs/pull/0007)"
-Issue: "[crystal-lang/crystal#10766](https://github.com/crystal-lang/crystal/issues/10766)"
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0007"
+Issue: "https://github.com/crystal-lang/crystal/issues/10766"
 ---
 
 # Summary
