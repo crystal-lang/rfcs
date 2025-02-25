@@ -182,7 +182,7 @@ The following are the potential contexts that Crystal could implement in stdlib.
 
 **Multi Threaded Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
 
-**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main`, game loop, CPU heavy computation), thus disabling concurrency on that thread; the event-loop would work normally (blocking the current fiber, hence the thread), trying to spawn a fiber without an explicit context would spawn into another context specified when creating the isolated context that could default to `ExecutionContext.default`.
+**Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main`, game loop, CPU heavy computation), thus disabling concurrency on that thread; the event-loop would work normally (blocking the current fiber, hence the thread), trying to spawn a fiber without an explicit context would spawn into another context specified when creating the isolated context that could default to `Fiber::ExecutionContext.default`.
 
 Precisions:
 
@@ -238,10 +238,10 @@ In addition, synchronization primitives, such as `Channel(T)` or `Mutex`, must a
 ```crystal
 class Thread
   # reference to the current execution context
-  property! execution_context : ExecutionContext
+  property! execution_context : Fiber::ExecutionContext
 
   # reference to the current MT scheduler (only present for MT contexts)
-  property! execution_context_scheduler : ExecutionContext::Scheduler
+  property! execution_context_scheduler : Fiber::ExecutionContext::Scheduler
 
   # reference to the currently running fiber (simpler access + support scenarios
   # where a whole scheduler is moved to another thread when a fiber has blocked
@@ -258,9 +258,9 @@ class Fiber
     ::sleep(0.seconds)
   end
 
-  property execution_context : ExecutionContext
+  property execution_context : Fiber::ExecutionContext
 
-  def initialize(@name : String?, @execution_context : ExecutionContext)
+  def initialize(@name : String?, @execution_context : Fiber::ExecutionContext)
   end
 
   def enqueue : Nil
@@ -269,33 +269,33 @@ class Fiber
 
   @[Deprecated("Use Fiber#enqueue instead")]
   def resume : Nil
-    # can't call ExecutionContext#resume directly (it's protected)
-    ExecutionContext.resume(self)
+    # can't call Fiber::ExecutionContext#resume directly (it's protected)
+    Fiber::ExecutionContext.resume(self)
   end
 end
 
-def spawn(*, name : String?, execution_context : ExecutionContext = ExecutionContext.current, &block) : Fiber
+def spawn(*, name : String?, execution_context : Fiber::ExecutionContext = Fiber::ExecutionContext.current, &block) : Fiber
   Fiber.new(name, execution_context, &block)
 end
 
 def sleep : Nil
-  ExecutionContext.reschedule
+  Fiber::ExecutionContext.reschedule
 end
 
 def sleep(time : Time::Span) : Nil
   Fiber.current.resume_event.add(time)
-  ExecutionContext.reschedule
+  Fiber::ExecutionContext.reschedule
 end
 ```
 
 And the proposed API. There are two distinct modules that each handle a specific
 parts:
 
-1. `ExecutionContext` is the module aiming to implement the public facing API,
+1. `Fiber::ExecutionContext` is the module aiming to implement the public facing API,
    for context creation and cross context communication; there can only be one
    instance object of an execution context at a time.
 
-2. `ExecutionContext::Scheduler` is the module aiming to implement internal API
+2. `Fiber::ExecutionContext::Scheduler` is the module aiming to implement internal API
    for each scheduler; there should be one scheduler per thread, and there may
    be one or more schedulers at a time for a single execution context (e.g. MT).
 
@@ -305,7 +305,7 @@ former need thread safe methods (i.e. cross context enqueues), the latter can
 assume thread local safety.
 
 ```crystal
-module ExecutionContext
+module Fiber::ExecutionContext
   # the default execution context (always started)
   class_getter default = MultiThreaded.new("DEFAULT", size: System.cpu_count.to_i)
 
@@ -346,7 +346,7 @@ module ExecutionContext
   abstract def event_loop : Crystal::EventLoop
 end
 
-module ExecutionContext::Scheduler
+module Fiber::ExecutionContext::Scheduler
   def self.current : ExecutionContext
     Thread.current.execution_context_scheduler
   end
@@ -379,9 +379,9 @@ single threaded context might implement both modules as a single type, taking
 advantage of only having to deal with a single thread. For example:
 
 ```crystal
-class ExecutionContext::SingleThreaded
-  include ExecutionContext
-  include ExecutionContext::Scheduler
+class SingleThreaded
+  include Fiber::ExecutionContext
+  include Fiber::ExecutionContext::Scheduler
 
   def initialize(name : String)
     # todo: start one thread
@@ -397,10 +397,10 @@ scheduler. For example:
 
 ```crystal
   class MultiThreaded
-    include ExecutionContext
+    include Fiber::ExecutionContext
 
     class Scheduler
-      include ExecutionContext::Scheduler
+      include Fiber::ExecutionContext::Scheduler
 
       # todo: implement abstract methods
     end
@@ -427,7 +427,7 @@ for its event loop).
 
 ```crystal
 class Isolated < SingleThreaded
-  def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
+  def initialize(name : String, @spawn_context = Fiber::ExecutionContext.default, &@func : ->)
     super name
     @fiber = Fiber.new(name: name, &@func)
     enqueue @fiber
@@ -451,11 +451,11 @@ end
 ```crystal
 # (main fiber runs in the default context)
 # shrink the main context to a single thread:
-ExecutionContext.default.resize(maximum: 1)
+Fiber::ExecutionContext.default.resize(maximum: 1)
 
 # create a dedicated context with N threads:
 ncpu = System.cpu_count
-codegen = ExecutionContext::MultiThreaded.new(name: "CODEGEN", minimum: ncpu, maximum: ncpu)
+codegen = Fiber::ExecutionContext::MultiThreaded.new(name: "CODEGEN", minimum: ncpu, maximum: ncpu)
 channel = Channel(CompilationUnit).new(ncpu * 2)
 group = WaitGroup.new(ncpu)
 
