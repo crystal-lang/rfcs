@@ -1,7 +1,9 @@
-- Feature Name: `math-combinatoric-library`
-- Start Date: 2024-02-09
-- RFC PR: [crystal-lang/rfcs#0005](https://github.com/crystal-lang/rfcs/pull/0005)
-- Issue: -
+---
+Feature Name: math-combinatoric-library
+Start Date: 2024-02-09
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0005"
+Issue:
+---
 
 # Summary
 
