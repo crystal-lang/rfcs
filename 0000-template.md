@@ -1,7 +1,9 @@
-- Feature Name: (fill me in with a unique ident, `my_awesome_feature`)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: [crystal-lang/rfcs#0000](https://github.com/crystal-lang/rfcs/pull/0000) (fill me in after creating the PR, also update the filename)
-- Issue: [crystal-lang/crystal#0000](https://github.com/crystal-lang/crystal/issues/0000)
+---
+Feature Name: # fill me in with a unique ident, `my_awesome_feature`
+Start Date: # fill me in with today's date, YYYY-MM-DD
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
+Issue: "https://github.com/crystal-lang/crystal/issues/0000"
+---
 
 # Summary
 

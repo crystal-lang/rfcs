@@ -1,7 +1,9 @@
-- Feature Name: rfcs_proposal
-- Start Date: 2024-01-30
-- RFC PR: [crystal-lang/rfcs#0001](https://github.com/crystal-lang/rfcs/pull/0001)
-- Issue: N/A
+---
+Feature Name: rfcs_proposal
+Start Date: 2024-01-30
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0001"
+Issue: null
+---
 
 # Summary
 

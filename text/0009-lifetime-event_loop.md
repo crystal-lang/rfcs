@@ -1,9 +1,9 @@
-- Feature Name: `lifetime-event_loop`
-- Start Date: 2024-11-11
-- RFC PR:
-  [crystal-lang/rfcs#0009](https://github.com/crystal-lang/rfcs/pull/9)
-- Issue:
-  [crystal-lang/crystal#14996](https://github.com/crystal-lang/crystal/pull/14996)
+---
+Feature Name: lifetime-event_loop
+Start Date: 2024-11-11
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/9"
+Issue: "https://github.com/crystal-lang/crystal/pull/14996"
+---
 
 # Summary
 
