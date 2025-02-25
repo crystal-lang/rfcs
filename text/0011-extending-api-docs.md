@@ -1,7 +1,9 @@
-- Feature Name: extending-api-docs
-- Start Date: 2024-11-14
-- RFC PR: [crystal-lang/rfcs#11](https://github.com/crystal-lang/rfcs/pull/11)
-- Issue: [crystal-lang/crystal#6721](https://github.com/crystal-lang/crystal/issues/6721)
+---
+Feature Name: extending-api-docs
+Start Date: 2024-11-14
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/11"
+Issue: "https://github.com/crystal-lang/crystal/issues/6721"
+---
 
 # Summary
 
