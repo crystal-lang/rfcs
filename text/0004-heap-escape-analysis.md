@@ -1,7 +1,9 @@
-- Feature Name: `heap_escape_analysis`
-- Start Date: 2024-02-06
-- RFC PR: [crystal-lang/rfcs#4](https://github.com/crystal-lang/rfcs/pull/4)
-- Issue: -
+---
+Feature Name: heap_escape_analysis
+Start Date: 2024-02-06
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/4"
+Issue:
+---
 
 # Summary
 
