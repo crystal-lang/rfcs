@@ -180,17 +180,18 @@ Once spawned a fiber shouldn’t _move_ to another execution context. For exampl
 
 The following are the potential contexts that Crystal could implement in stdlib.
 
-**Single Threaded Context**: fibers will never run in parallel, they can use simpler and faster synchronization primitives internally (no atomics, no thread safety) and still communicate with other contexts with the default thread-safe primitives; the drawback is that a blocking fiber will block the thread and all the other fibers.
+**Concurrent Context**: fibers will never run in parallel, they can use simpler and faster synchronization primitives internally (no atomics, no thread safety) and still communicate with other contexts with the default thread-safe primitives (e.g. `Channel`); the drawback is that a blocking fiber will block the other fibers from progressing. The concurrency limitation doesn't mean that the fibers will keep running on the same system thread forever.
 
-**Multi Threaded Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
+**Parallel Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
 
 **Isolated Context**: only one fiber is allowed to run on a dedicated thread (e.g. `Gtk.main`, game loop, CPU heavy computation), thus disabling concurrency on that thread; the event-loop would work normally (blocking the current fiber, hence the thread), trying to spawn a fiber without an explicit context would spawn into another context specified when creating the isolated context that could default to `Fiber::ExecutionContext.default`.
 
 Precisions:
 
-- The above list isn’t exclusive: there can be other contexts with different rules (for example MT without work stealing).
+- The above list isn’t exclusive: there could be other contexts with different rules (for example MT without work stealing).
 - Each context isn’t exclusive: an application can start as many contexts in parallel as it needs.
-- An execution context should be wrappable. For example we could want to add nursery-like capabilities on top of an existing context, where the EC monitors all fibers and automatically shuts down when all said fibers have completed.
+- Fibers running in one context still run in parallel to fibers of other contexts.
+- An execution context should be wrappable. For example we could want to add nursery-like capabilities on top of an existing context, where the context monitors all fibers and automatically shuts down when all said fibers have completed.
 
 ## The default execution context
 
@@ -212,9 +213,9 @@ Ideally, anybody could implement an execution context that suits their applicati
 
 2. We can create an execution context dedicated to handle the UI or game loop of an application, and keep the threads of the default context to handle calculations or requests, never impacting the responsiveness of the UI.
 
-3. We can create an MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked when thousands of users try to login at the same time.
+3. We can create a MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked when thousands of users try to login at the same time.
 
-4. The crystal compiler doesn’t need MT during the parsing and semantic phases (for now); we could configure the default execution context to 1 thread only, then start another execution context for codegen with as many threads as CPUs, and spawn that many fibers into this context.
+4. The crystal compiler doesn’t need MT during the parsing and semantic passes (for now); we could configure the default execution context to 1 thread only, then start another execution context for codegen with as many threads as CPUs, and spawn that many fibers into this context.
 
 5. Different contexts could have different priorities and affinities, to allow the operating system to allocate threads more efficiently in heterogenous computing architectures (e.g. ARM big.LITTLE).
 
@@ -222,30 +223,26 @@ Ideally, anybody could implement an execution context that suits their applicati
 
 An execution context shall provide:
 
-- configuration (e.g. number of threads, …);
+- configuration (e.g. maximum parallelism, …);
 - methods to spawn, enqueue, yield and reschedule fibers within its premises;
 - a scheduler to run the fibers (or many schedulers for a MT context);
 - an event loop (IO & timers):
 
-  => this might be complex: I don’t think we can share a libevent across event bases? we already need to have a “thread local” libevent object for IO objects as well as for PCRE2 (though this is an optimization).
-
-  => we might want to move to our own primitives on top of epoll (Linux) and kqueue (BSDs) since we already wrap IOCP (Win32) and a PR for `io_uring` (Linux) so we don’t have to stick to libevent2 limitations (e.g. we may be able to allocate events on the stack since we always suspend the fiber).
-
 Ideally developers would be able to create custom execution contexts. That means we must have public APIs for at least the EventLoop and maybe the Scheduler (at least its resume method), which sounds like a good idea.
 
-In addition, synchronization primitives, such as `Channel(T)` or `Mutex`, must allow communication and synchronization across execution contexts, and thus be thread-safe.
+In addition, synchronization primitives, such as `Channel(T)` or `Mutex`, must allow communication and synchronization across execution contexts, and thus need to be thread-safe.
 
 ## Changes
 
 ```crystal
 class Thread
-  # reference to the current execution context
+  # Reference to the current execution context.
   property! execution_context : Fiber::ExecutionContext
 
-  # reference to the current MT scheduler (only present for MT contexts)
-  property! execution_context_scheduler : Fiber::ExecutionContext::Scheduler
+  # Reference to the current scheduler (every context has at least one scheduler).
+  property! scheduler : Fiber::ExecutionContext::Scheduler
 
-  # reference to the currently running fiber (simpler access + support scenarios
+  # Reference to the currently running fiber (simpler access + support scenarios
   # where a whole scheduler is moved to another thread when a fiber has blocked
   # for too long: the fiber would still need to access `Fiber.current`).
   property! current_fiber : Fiber
@@ -271,13 +268,13 @@ class Fiber
 
   @[Deprecated("Use Fiber#enqueue instead")]
   def resume : Nil
-    # can't call Fiber::ExecutionContext#resume directly (it's protected)
+    # can't call Fiber::ExecutionContext#resume directly (protected method)
     Fiber::ExecutionContext.resume(self)
   end
 end
 
 def spawn(*, name : String?, execution_context : Fiber::ExecutionContext = Fiber::ExecutionContext.current, &block) : Fiber
-  Fiber.new(name, execution_context, &block)
+  execution_context.spawn(name: name, &block)
 end
 
 def sleep : Nil
@@ -309,10 +306,14 @@ assume thread local safety.
 ```crystal
 module Fiber::ExecutionContext
   # the default execution context (always started)
-  class_getter default = MultiThreaded.new("DEFAULT", size: System.cpu_count.to_i)
+  class_getter default = Concurrent.default
 
   def self.current : ExecutionContext
     Thread.current.execution_context
+  end
+
+  def self.current? : ExecutionContext?
+    Thread.current.execution_context?
   end
 
   # the following methods delegate to the current execution context, they expose
@@ -337,7 +338,12 @@ module Fiber::ExecutionContext
   # the following methods can be called from whatever context and must be thread
   # safe (even ST):
 
-  abstract def spawn(name : String?, &block) : Fiber
+  def spawn(name : String?, &block) : Fiber
+    fiber = Fiber.new(name, self, &block)
+    enqueue(fiber)
+    fiber
+  end
+
   abstract def spawn(name : String?, same_thread : Bool, &block) : Fiber
   abstract def enqueue(fiber : Fiber) : Nil
 
@@ -345,27 +351,33 @@ module Fiber::ExecutionContext
   # must be thread safe (even ST):
 
   abstract def stack_pool : Fiber::StackPool
+  abstract def stack_pool? : Fiber::StackPool?
   abstract def event_loop : Crystal::EventLoop
 end
 
 module Fiber::ExecutionContext::Scheduler
   def self.current : ExecutionContext
-    Thread.current.execution_context_scheduler
+    Thread.current.scheduler
   end
 
-  abstract def thread : Thread
-  abstract def execution_context : ExecutionContext
+  protected abstract def thread : Thread
+  protected abstract def execution_context : ExecutionContext
 
   # the following methods are expected to only be called from the current
   # execution context scheduler (aka current thread):
 
-  abstract def spawn(name : String?, &block) : Fiber
+  def spawn(name : String?, &block) : Fiber
+    fiber = Fiber.new(name, execution_context, &block)
+    enqueue(fiber)
+    fiber
+  end
+
   abstract def spawn(name : String?, same_thread : Bool, &block) : Fiber
-  abstract def enqueue(fiber : Fiber) : Nil
 
   # the following methods must only be called on the current execution context
   # scheduler, otherwise we could resume or suspend a fiber on whatever context:
 
+  protected abstract def enqueue(fiber : Fiber) : Nil
   protected abstract def reschedule : Nil
   protected abstract def resume(fiber : Fiber) : Nil
 
@@ -373,15 +385,19 @@ module Fiber::ExecutionContext::Scheduler
   # releasing the stack of dead fibers safely, ...
   protected def swapcontext(fiber : Fiber) : Nil
   end
+
+  # For example "running", "event-loop" or "parked".
+  abstract def status : String
 end
 ```
 
-Then we can implement a number of default execution contexts. For example a
-single threaded context might implement both modules as a single type, taking
+Then we can implement a number of default execution contexts.
+
+The concurrent context can implement both modules as a single type, taking
 advantage of only having to deal with a single thread. For example:
 
 ```crystal
-class SingleThreaded
+class Fiber::ExecutionContext::Concurrent
   include Fiber::ExecutionContext
   include Fiber::ExecutionContext::Scheduler
 
@@ -393,43 +409,47 @@ class SingleThreaded
 end
 ```
 
-A multithreaded context should implement both modules as different types, since
+In practice, the concurrent context might not bring much performance improvement
+over the parallel context with a single thread, and both might share the same
+base.
+
+The parallel context should implement both modules as different types, since
 there will be only one execution context but many threads that will each need a
 scheduler. For example:
 
 ```crystal
-  class MultiThreaded
-    include Fiber::ExecutionContext
+class Fiber::ExecutionContext::Parallel
+  include Fiber::ExecutionContext
 
-    class Scheduler
-      include Fiber::ExecutionContext::Scheduler
-
-      # todo: implement abstract methods
-    end
-
-    getter name : String
-
-    def initialize(name : String, @size : Int32)
-      # todo: start @size threads
-    end
-
-    def spawn(name : String?, same_thread : Bool, &block) : Fiber
-      raise RuntimeError.new if same_thread
-      self.spawn(name, &block)
-    end
+  class Scheduler
+    include Fiber::ExecutionContext::Scheduler
 
     # todo: implement abstract methods
   end
+
+  getter name : String
+
+  def initialize(name : String, @size : Int32)
+    # todo: start @size threads
+  end
+
+  def spawn(name : String?, same_thread : Bool, &block) : Fiber
+    raise ArgumentError.new if same_thread
+    self.spawn(name, &block)
+  end
+
+  # todo: implement abstract methods
+end
 ```
 
-Finally, an isolated context could extend the singlethreaded context, taking
-advantage of its —in practice we might want to have a distinct implementation
-since we should only have to deal with two fibers (one isolate + one main loop
-for its event loop).
+Finally, the isolated context could extend the concurrent context, taking
+advantage of having a single fiber to run —in practice we want to have a
+distinct implementation since we should only have to deal with the thread's main
+fiber and the isolated fiber.
 
 ```crystal
-class Isolated < SingleThreaded
-  def initialize(name : String, @spawn_context = Fiber::ExecutionContext.default, &@func : ->)
+class Fiber::ExecutionContext::Isolated < Fiber::ExecutionContext::Concurrent
+  def initialize(name : String, @spawn_context = ExecutionContext.default, &@func : ->)
     super name
     @fiber = Fiber.new(name: name, &@func)
     enqueue @fiber
@@ -456,30 +476,29 @@ end
 Fiber::ExecutionContext.default.resize(maximum: 1)
 
 # create a dedicated context with N threads:
-ncpu = System.cpu_count
-codegen = Fiber::ExecutionContext::MultiThreaded.new(name: "CODEGEN", minimum: ncpu, maximum: ncpu)
-channel = Channel(CompilationUnit).new(ncpu * 2)
-group = WaitGroup.new(ncpu)
+ncpu = System.cpu_count.to_i32
+codegen = ExecutionContext::Parallel.new(name: "CODEGEN", maximum: ncpu)
+channel = Channel(CompilationUnit).new(ncpu * 4)
 
-spawn do
-  # (runs in the default context)
-  units.each do |unit|
-    channel.send(unit)
-  end
-end
-
-ncpu.times do
-  codegen.spawn do
-    # (runs in the codegen context)
-    while unit = channel.receive?
-      unit.compile
+WaitGroup.wait do |wg|
+  wg.spawn do
+    # (runs in the default context)
+    units.each do |unit|
+      channel.send(unit)
     end
-  ensure
-    group.done
+  end
+
+  ncpu.times do
+    codegen.spawn do
+      # (runs in the codegen context)
+      while unit = channel.receive?
+        unit.compile
+      end
+    end
   end
 end
 
-group.wait
+# now, we can link the executable
 ```
 
 ## Breaking changes
@@ -509,7 +528,7 @@ The default execution context moving from 'a fiber is always resumed on the same
 > [!NOTE]
 > The breaking changes can be postponed to Crystal 2 by making the default execution context be ST, keep supporting `same_thread: true` for ST while MT would raise, and `same_thread: false` would be a NOOP. A compilation flag can be introduced to change the default context to be MT in Crystal 1 (e.g. keep `-Dpreview_mt` but consider just `-Dmt`). Crystal 2 would drop the `same_thread` argument, make the default context MT:N, and introduce a `-Dwithout_mt` compilation flag to return to ST to ease the transition.
 >
-> Alternatively, since the `-Dpreview_mt` compilation flag denotes an experimental feature, we could deprecate `same_thread` in a Crystal 1.x release, then make it a NOOP and set the default context to MT:1 in a further Crystal 1.y release. Crystal 2 would then drop the `same_thread` argument and change the default context to MT:N.
+> Alternatively, since the `-Dpreview_mt` compilation flag denotes an experimental feature, we could deprecate `same_thread` in a Crystal 1.x release, then make it a NOOP and set the default context to MT:1 in a further Crystal 1.y release. Crystal 2 would then drop the `same_thread` argument and could change the default context to MT:N.
 
 # Drawbacks
 
@@ -553,7 +572,7 @@ The **Tokio** crate for **Rust** provides a single-threaded scheduler or a multi
 
 ## Introduction of the feature
 
-The feature will likely require both the `preview_mt` and `execution_contexts` flags for the initial implementations.
+The feature requires both the `preview_mt` and `execution_contexts` flags while we implement and rollout the feature. The first flag is to enable thread safety in stdlib, and the second one to replace the the legacy scheduler with the execution context schedulers.
 
 ~~Since it is a breaking change from stable Crystal, unrelated to `preview_mt`, MT and execution contexts may only become default with a Crystal major release?~~
 
@@ -561,7 +580,7 @@ The feature will likely require both the `preview_mt` and `execution_contexts` f
 
 ## Default context configuration
 
-This proposal doesn’t solve the inherent problem of: how can applications configure the default context at runtime (e.g. number of MT schedulers) since we create the context before the application’s main can start. 
+This proposal doesn’t solve the inherent problem of: how can applications configure the default context at runtime (e.g. number of MT schedulers) since we create the context before the application’s main can start.
 
 We could maybe have sensible defaults + lazily started schedulers & threads, which means that the default context would only start 1 thread to run 1 scheduler, then start up to `System.cpu_count` on demand (using some heuristic).
 
@@ -569,4 +588,4 @@ The application would then be able to scale the default context programmatically
 
 # Future possibilities
 
-MT execution contexts could eventually have a dynamic number of threads, adding new threads to a context when it has enough work, and removing threads when threads are starving (always within min..max limits). Ideally the threads could return to a thread pool (up to a total limit, like GOMAXPROCS in Go) and be reused by other contexts.
+Parallel execution contexts could eventually have a dynamic number of threads, adding new threads to a context when it has enough work, and removing threads when threads are starving (up to a maximum limit, like GOMAXPROCS in Go). Ideally the threads could return to a thread pool, and be reused by other contexts.
