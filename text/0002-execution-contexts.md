@@ -253,13 +253,13 @@ class Fiber
     Thread.current.current_fiber
   end
 
-  def self.yield : Nil
-    ::sleep(0.seconds)
+  def self.suspend : Nil
+    ExecutionContext.reschedule
   end
 
-  property execution_context : Fiber::ExecutionContext
+  property execution_context : ExecutionContext
 
-  def initialize(@name : String?, @execution_context : Fiber::ExecutionContext)
+  def initialize(@name : String?, @execution_context : ExecutionContext, &proc : ->)
   end
 
   def enqueue : Nil
@@ -268,22 +268,12 @@ class Fiber
 
   @[Deprecated("Use Fiber#enqueue instead")]
   def resume : Nil
-    # can't call Fiber::ExecutionContext#resume directly (protected method)
-    Fiber::ExecutionContext.resume(self)
+    ExecutionContext.resume(self)
   end
 end
 
-def spawn(*, name : String?, execution_context : Fiber::ExecutionContext = Fiber::ExecutionContext.current, &block) : Fiber
-  execution_context.spawn(name: name, &block)
-end
-
-def sleep : Nil
-  Fiber::ExecutionContext.reschedule
-end
-
-def sleep(time : Time::Span) : Nil
-  Fiber.current.resume_event.add(time)
-  Fiber::ExecutionContext.reschedule
+def spawn(*, name : String?, &block) : Fiber
+  Fiber::ExecutionContext.current.spawn(name: name, &block)
 end
 ```
 
@@ -385,9 +375,6 @@ module Fiber::ExecutionContext::Scheduler
   # releasing the stack of dead fibers safely, ...
   protected def swapcontext(fiber : Fiber) : Nil
   end
-
-  # For example "running", "event-loop" or "parked".
-  abstract def status : String
 end
 ```
 
