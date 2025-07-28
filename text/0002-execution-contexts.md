@@ -431,8 +431,8 @@ end
 
 Finally, the isolated context could extend the concurrent context, taking
 advantage of having a single fiber to run —in practice we want to have a
-distinct implementation since we should only have to deal with the thread's main
-fiber and the isolated fiber.
+distinct implementation since we should only have to deal with the isolated
+fiber and the thread's main fiber that runs the event loop or parks the thread.
 
 ```crystal
 class Fiber::ExecutionContext::Isolated < Fiber::ExecutionContext::Concurrent
