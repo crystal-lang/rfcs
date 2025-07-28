@@ -479,24 +479,27 @@ Fiber::ExecutionContext.default.resize(maximum: 1)
 ncpu = System.cpu_count.to_i32
 codegen = ExecutionContext::Parallel.new(name: "CODEGEN", maximum: ncpu)
 channel = Channel(CompilationUnit).new(ncpu * 4)
+group = WaitGroup.new(ncpu)
 
-WaitGroup.wait do |wg|
-  wg.spawn do
-    # (runs in the default context)
-    units.each do |unit|
-      channel.send(unit)
-    end
-  end
-
-  ncpu.times do
-    codegen.spawn do
-      # (runs in the codegen context)
-      while unit = channel.receive?
-        unit.compile
-      end
-    end
+spawn do
+  # (runs in the default context)
+  units.each do |unit|
+    channel.send(unit)
   end
 end
+
+ncpu.times do
+  codegen.spawn do
+    # (runs in the codegen context)
+    while unit = channel.receive?
+      unit.compile
+    end
+  ensure
+    group.done
+  end
+end
+
+group.wait
 
 # now, we can link the executable
 ```
