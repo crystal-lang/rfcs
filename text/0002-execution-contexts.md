@@ -7,7 +7,7 @@ Issue: "https://github.com/crystal-lang/crystal/issues/15342"
 
 # Summary
 
-Reinvent MT support in Crystal to be more efficient, for example by avoiding blocked fibers while there are sleeping threads, all the while empowering developers with different Execution Contexts to run fibers in.
+Reinvent Crystal's concurrency execution model with respect to multi-threading. It's getting more efficient, for example by avoiding blocked fibers while there are sleeping threads. And it empowers developers with different strategies for scheduling fiber, called _Execution Contexts_.
 
 Note: this proposal takes inspiration from Go and Kotlin.
 
@@ -168,7 +168,7 @@ These scenarios don't have to be a single MT environment with work stealing like
 
 An execution context creates and manages a dedicated pool of 1 or more threads where fibers can be executed into. Each context manages the rules to run, suspend and swap fibers internally.
 
-Applications can create any number of execution contexts in parallel. These contexts are isolated but they shall still be capable to communicate together with the usual synchronization primitives (e.g. Channel, Mutex) that must be thread-safe.
+Applications can create any number of execution contexts in parallel. These contexts are isolated but they shall still be capable to communicate together with the usual thread-safe synchronization primitives (e.g. `Channel`, `Mutex`).
 
 Said differently: an execution context groups fibers together. Instead of associating a fiber to a specific thread, we'd now associate a fiber to an execution context, abstracting which thread(s) they actually run on.
 
@@ -180,7 +180,7 @@ Once spawned a fiber shouldn’t _move_ to another execution context. For exampl
 
 The following are the potential contexts that Crystal could implement in stdlib.
 
-**Concurrent Context**: fibers will never run in parallel, they can use simpler and faster synchronization primitives internally (no atomics, no thread safety) and still communicate with other contexts with the default thread-safe primitives (e.g. `Channel`); the drawback is that a blocking fiber will block the other fibers from progressing. The concurrency limitation doesn't mean that the fibers will keep running on the same system thread forever.
+**Concurrent Context**: fibers will never run in parallel, they can use simpler and faster synchronization primitives internally (no atomics, no thread safety) and still communicate with other contexts with the default thread-safe primitives (e.g. `Channel`); the drawback is that a blocking fiber will block the other fibers from progressing. This concurrency limitation however does not guarantee that fibers stay on the same system thread.
 
 **Parallel Context**: fibers will run in parallel and may be resumed by any thread, the number of schedulers and threads can grow or shrink, schedulers may move to another thread (M:N schedulers:threads) and steal fibers from each others; the advantage is that fibers that can run should be able to run, as long as a thread is available (i.e. no more starving threads) and we can be shrink the number of schedulers;
 
@@ -213,7 +213,7 @@ Ideally, anybody could implement an execution context that suits their applicati
 
 2. We can create an execution context dedicated to handle the UI or game loop of an application, and keep the threads of the default context to handle calculations or requests, never impacting the responsiveness of the UI.
 
-3. We can create a MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked when thousands of users try to login at the same time.
+3. We can create an MT execution context for CPU heavy algorithms, that would block the current thread (e.g. hashing passwords using BCrypt with a high cost), and let the operating system preempt the threads, so the default context running a webapp backend won't be blocked when thousands of users try to login at the same time.
 
 4. The crystal compiler doesn’t need MT during the parsing and semantic passes (for now); we could configure the default execution context to 1 thread only, then start another execution context for codegen with as many threads as CPUs, and spawn that many fibers into this context.
 
