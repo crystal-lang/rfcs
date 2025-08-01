@@ -1,7 +1,7 @@
 ---
-Feature Name: general-timeout
+Feature Name: general-timeouts
 Start Date: 2025-08-02
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000"
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0014"
 Issue: N/A
 ---
 
