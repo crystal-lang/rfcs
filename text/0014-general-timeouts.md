@@ -22,7 +22,7 @@ timeouts: one associated to IO operations, and another tailored to `Channel` and
 `select` to support the timeout branch of select actions.
 
 > [!CAUTION]
-> Verify if the select action timeout mechanism can requme *twice*.
+> Verify if the select action timeout mechanism can resume *twice*.
 
 Adding timeouts to all the synchronization primitives in the stdlib, and
 possibly to custom ones in shards and applications, shouldn't be much harder
@@ -60,8 +60,15 @@ eventually wrap, but after so many iterations that it's impossible to hit the
 ABA issue in practice. For example, an UInt32 word with a 1 bit flag would need
 2,147,483,648 iterations!
 
-The counterpart is that every waiter and timer event must know the actual atomic
-value, thereafter called `cancelation token`, to be able to resolve the timeout.
+For our use case, we can do with incrementing the value when we set the timeout
+only, the flag is enough to prevent multiple threads to unset the timeout, but
+we must increment the value when we set the timeout again so another thread
+trying to unset the timeout won't mistaken the new set timeout with an older
+one.
+
+The counterpart is that every waiter and timer event must know the current
+atomic value (thereafter called `cancelation token`) to be able to resolve the
+timeout.
 
 > [!NOTE]
 > Alternatively, we could allocate the atomic in the HEAP, but then every
@@ -122,66 +129,52 @@ expired, the method can simply return, otherwise it must cancel the timer event.
 
 # Reference-level explanation
 
-```crystal
-class Fiber
-  enum TimeoutResult
-    EXPIRED
-    CANCELED
-  end
+## Public API (`Fiber`)
 
-  alias TimeoutToken = UInt32
+We introduce an enum: `Fiber::TimeoutResult` with two values `CANCELED` and
+`EXPIRED`. We could return a `Bool` instead, but then we'd be left to wonder
+whether `true` means expired or canceled.
 
-  def self.timeout(Time::Span, & : Fiber::TimeoutToken ->) : TimeoutResult
-    token = Fiber.current.set_timeout
+We introduce a `TimeoutToken` alias for the atomic value type. This abstracts
+the underlying type as an 'opaque' type. We could introduce a wrapper struct
+with only a `#value` method to make it fully opaque.
 
-    # yield the cancelation token so the calling fiber can add itself _and_ the
-    # token to a waiting list before the fiber suspends itself
-    yield token
+The public API can do with a couple methods:
 
-    expired = Crystal::EventLoop.current.timeout?(duration, token)
-    expired ? TimeoutResult::EXPIRED : Timeout::CANCELED
-  end
+- `Fiber.timeout(duration : Time::Span, & : Fiber::TimeoutToken) : Fiber::TimeoutResult`
 
-  # :nodoc:
-  protected def set_timeout : TimeoutToken
-    token = (@timeout.get(:relaxed) &+ 2_u32) | 1_u32
-    @timeout.set(token, :relaxed)
-    token
-  end
+  Sets the flag and increments the value of the atomic. Yields the cancelation
+  token (aka the new atomic value) so the caller can record it, then delegates
+  to the event loop to suspend the calling fiber and eventually resume it when
+  the timeout expired if it hasn't been canceled already.
 
-  def resolve_timeout?(token : TimeoutToken) : Bool
-    _, success = @timeout.compare_and_set(token, (token &+ 2_u32) & ~1_u32, :relaxed, :relaxed)
-    success
-  end
-end
+  Returns `Fiber::TimeoutToken::CANCELED` if the timeout was canceled, and
+  `Fiber::TimeoutToken::EXPIRED` if the timeout expired.
 
-class Crystal::EventLoop::Fake < Crystal::EventLoop
-  def process_timer(timer : Timer)
-    case timer.type
-    when :timeout
-      if timer.fiber.resolve_timeout?(timer.token)
-        fiber.enqueue
-      end
-    else
-      # handle other timers
-    end
-  end
+  All the details to add, trigger and remove the timer are fully delegated to
+  the event loop implementations.
 
-  def timeout?(duration : Time::Span, token : Fiber::TimeoutToken) : Bool
-    timer = Timer.new(:timeout, Fiber.current, duration, token)
-    add_timer(timer)
+- `Fiber#resolve_timeout?(token : Fiber::TimeoutToken) : Bool`
 
-    Fiber.suspend
+  Tries to unset the flag of the timeout atomic value for `fiber`. It must fail
+  if the atomic value isn't `token` anymore (the flag has already been unset or
+  the value got incremented). Returns true if and only if the atomic value was
+  sucessfully updated, otherwise returns false.
 
-    if timer.expired?
-      true
-    else
-      delete_timer(timer)
-      false
-    end
-  end
-end
-```
+  On success, the caller must enqueue the fiber. On failure, the caller musn't.
+
+## Internal API (`Crystal::EventLoop`)
+
+We introduce one method:
+
+- `Crystal::EventLoop#timeout(duration : Time::Span, token : Fiber::TimeoutToken) : Bool`
+
+  The event loop shall suspend the current fiber for `duration` and returns
+  `true` if the timeout expired, and `false` otherwise.
+
+  When processing the timer event, the event loop must resolve the timeout by
+  calling `fiber.resolve_timeout?(token)` and enqueue the fiber if an only if it
+  returned true. It must skip the fiber otherwise.
 
 > [!CAUTION]
 > We might want to use absolute times instead of relative timeouts, so every use
@@ -197,9 +190,52 @@ end
 > fixed to use either absolute or relative times only (depending on the
 > implementations).
 
+## Example
+
+Following is a potential implementation for the mutex example from the guide
+section above.
+
+```crystal
+class CancelableMutex
+  def lock : Nil
+    loop do
+      break if lock_impl?
+      enqueue_waiter(Fiber.current, nil)
+    end
+  end
+
+  def lock?(timeout : Time::Span) : Bool
+    limit = Time.monotonic + timeout
+
+    loop do
+      return true if lock_impl?
+
+      res = Fiber.timeout(limit - Time.monotonic) do |token|
+        enqueue_waiter(Fiber.current, token)
+      end
+      return false if res.expired?
+    end
+  end
+
+  def unlock : Nil
+    unlock_impl
+
+    while waiter = dequeue_waiter?
+      fiber, token = waiter
+
+      if token.nil? || fiber.resolve_timeout?(token)
+        fiber.enqueue
+        break
+      end
+    end
+  end
+def
+```
+
+
 # Drawbacks
 
-...
+None that I can think of.
 
 # Rationale and alternatives
 
@@ -211,16 +247,31 @@ IO timeouts for some event loops (this needs to be investigated).
 An alternative could be to introduce lightweight abstract channels. One such
 channel could have a delayed sent that would be triggered after some duration. A
 select action could merely wait on this. Yet, such an delayed channel might be
-implementable on top of the timeout feature presented here.
+implementable on top of the timeout feature presented here. It actually feels
+more like a potential evolution for `select`.
 
 # Prior art
 
-...
+Most runtimes expose cancelable timers, directly (for example [timer_create(2)]
+on POSIX) or indirectly through synchronization primitives (for example
+[pthread_cond_timedwait(3)] on POSIX).
 
 # Unresolved questions
 
-...
+None that I can think of.
 
 # Future possibilities
 
-...
+As a low level feature, we can use it to add timeouts a bit anywhere they'd make
+sense. For example implement alternative methods that could timeout in every
+synchronization primitive (`Mutex`, `WaitGroup`, ...), including those in the
+[sync shard].
+
+We might be able to use it in the IOCP event loop where we currently need to
+sleep and yield in a specific timeout case, as well as other event loops for IO
+timeouts (to be verified), as well as for the select action timeout that
+currently relies on a custom solution.
+
+[timer_create(2)](https://www.man7.org/linux/man-pages/man2/timer_create.2.html)
+[pthread_cond_timedwait(3)](https://www.man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html)
+[sync shard](https://github.com/ysbaddaden/sync)
