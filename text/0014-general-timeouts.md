@@ -60,21 +60,39 @@ eventually wrap, but after so many iterations that it's impossible to hit the
 ABA issue in practice. For example, an UInt32 word with a 1 bit flag would need
 2,147,483,648 iterations!
 
-For our use case, we can do with incrementing the value when we set the timeout
-only, the flag is enough to prevent multiple threads to unset the timeout, but
-we must increment the value when we set the timeout again so another thread
-trying to unset the timeout won't mistaken the new set timeout with an older
-one.
-
 The counterpart is that every waiter and timer event must know the current
 atomic value (thereafter called `cancelation token`) to be able to resolve the
-timeout.
+timeout. I believe this is an acceptable trade off.
 
 > [!NOTE]
 > Alternatively, we could allocate the atomic in the HEAP, but then every
 > timeout would depend on the GC, and we'd still need to save the pointer for
 > every waiter and timer. We can't store it on `Fiber` because we'd jump back
 > into the ABA problem.
+
+For our use case, we can rely on a few properties to choose the best atomic
+operation:
+
+1. The fiber can only be suspended once at a time, and can thus only be waiting
+   on a single timeout (or a sleep) at a time. Last but not least, only the
+   current fiber can decide to create a timeout (a third party fiber can't).
+   Hence we can merely set the value when setting the timeout (no need for CAS).
+
+2. The flag is enough to prevent multiple threads to unset the timeout in
+   parallel, however we must increment the value when we *set the timeout again*
+   to prevent another thread from mistakenly unset the new timeout. Hence
+   setting the timeout must increment the value, but resolving can merely unset
+   the flag.
+
+> [!TIP]
+> To keep the flag and the increment in the same atomic value, we can use an
+> UInt32 value, use bit 1 for the flag, so 0 and 1 denote the unset and set
+> states repectively, and use bits 2..32 to increment the value, thus adding 2
+> to do the increment—with more flags we'd shift the increment by 1 bit.
+>
+> Setting the timeout must get the atomic value, set the first bit and increment
+> by 2 (wrapping on overflow): `token = (atm.get | 1) &+ 2` while resolving the
+> timeout shall unset the first bit: `token & ~1`.
 
 ## Synchronization primitives
 
@@ -163,6 +181,10 @@ The public API can do with a couple methods:
 
   On success, the caller must enqueue the fiber. On failure, the caller musn't.
 
+Code calling `Fiber.timeout` must call `Fiber#resolve_timeout?` with the
+cancelation token and to act accordingly to the result—enqueue the fiber iff
+the timeout was canceled.
+
 ## Internal API (`Crystal::EventLoop`)
 
 We introduce one method:
@@ -175,20 +197,6 @@ We introduce one method:
   When processing the timer event, the event loop must resolve the timeout by
   calling `fiber.resolve_timeout?(token)` and enqueue the fiber if an only if it
   returned true. It must skip the fiber otherwise.
-
-> [!CAUTION]
-> We might want to use absolute times instead of relative timeouts, so every use
-> cases that need to retry wouldn't have to deal with caculating the remaining
-> time on each iteration, and would only need to calculate the absolute limit
-> (now + timeout).
->
-> The problem is that monotonic times and durations are represented using the
-> same type (`Time::Span`), and `#sleep` uses relative time. Maybe we can
-> support both and add an `absolute` argument, that would default to `false`?
->
-> Only `Fiber.timeout()` would need the argument. The event loop API can be
-> fixed to use either absolute or relative times only (depending on the
-> implementations).
 
 ## Example
 
@@ -210,9 +218,15 @@ class CancelableMutex
     loop do
       return true if lock_impl?
 
+      # 1. set the timeout
       res = Fiber.timeout(limit - Time.monotonic) do |token|
+        # 2. save the cancelation token
         enqueue_waiter(Fiber.current, token)
+
+        # 3. the fiber will now be suspended...
       end
+      # 4. and, the fiber has resumed
+
       return false if res.expired?
     end
   end
@@ -224,9 +238,12 @@ class CancelableMutex
       fiber, token = waiter
 
       if token.nil? || fiber.resolve_timeout?(token)
+        # the waiter had no timeout or we canceled the timeout
         fiber.enqueue
         break
       end
+
+      # try the next waiting fiber
     end
   end
 def
@@ -258,7 +275,26 @@ on POSIX) or indirectly through synchronization primitives (for example
 
 # Unresolved questions
 
-None that I can think of.
+1. Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` be a struct
+   with the fiber reference and the cancelation token, and have a `#resolve?`
+   method to resolve the token. That would be more OOP and open more evolutions,
+   though it would make the token larger (pointer + u32 + padding) as well as
+   the duplicate the fiber reference that is likely to be already kept.
+
+2. We may want to use *absolute time instead of relative duration*, so every use
+   cases that need to retry wouldn't have to deal with caculating the remaining
+   time on each iteration, and would only need to calculate the absolute limit
+   (now + timeout).
+
+   The problem is that monotonic times and durations are represented using the
+   same type (`Time::Span`), and `#sleep` uses relative time. Using absolute
+   time would be confusing. Maybe we can support *both* and add an `absolute`
+   argument, that would default to `false`?
+
+   Only `Fiber.timeout()` would need the argument. The event loop API can be
+   fixed to use either absolute or relative times only, since implementations
+   may already use absolute times internally—the epoll and kqueue event loops
+   use absolute time for example.
 
 # Future possibilities
 
@@ -272,6 +308,6 @@ sleep and yield in a specific timeout case, as well as other event loops for IO
 timeouts (to be verified), as well as for the select action timeout that
 currently relies on a custom solution.
 
-[timer_create(2)](https://www.man7.org/linux/man-pages/man2/timer_create.2.html)
-[pthread_cond_timedwait(3)](https://www.man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html)
-[sync shard](https://github.com/ysbaddaden/sync)
+[timer_create(2)]: https://www.man7.org/linux/man-pages/man2/timer_create.2.html
+[pthread_cond_timedwait(3)]: https://www.man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html
+[sync shard]: https://github.com/ysbaddaden/sync
