@@ -1,5 +1,5 @@
 ---
-Feature Name: general-timeouts
+Feature Name: cancelable-timers
 Start Date: 2025-08-02
 RFC PR: "https://github.com/crystal-lang/rfcs/pull/0014"
 Issue: N/A
@@ -7,39 +7,95 @@ Issue: N/A
 
 # Summary
 
-Introduce a general `#timeout` feature, ideally as simple as `#sleep` that would
-return whether the timer expired, or was manually canceled.
+I propose to introduce a cancelable timer, designed to be low level, yet simple
+and efficient, allowing higher level abstractions, such a pool of connections
+for example, to easily add timeout features.
 
 
 # Motivation
 
-Synchronization primitives, such as mutexes, condition variables, pools, or
-event channels, could take advantage of a general timeout mechanism.
+Synchronization primitives, such as mutexes, condition variables or pools, could
+take advantage of a simple timeout mechanism. For example try to checkout a
+connection from the pool and fail after 5 seconds.
 
-Crystal has a mechanism in the event loop to suspend the execution of a fiber
-for a set amount of time (`#sleep`). It also has a couple mechanisms to add
-timeouts: one associated to IO operations, and another tailored to `Channel` and
-`select` to support the timeout branch of select actions.
+Crystal already provides the `sleep` method that suspends the execution of a
+fiber for some time and eventually resumes it. A sleep timer will necessarily
+expire and cannot be canceled. We can technically resume the fiber early (just
+enqueue it), but since we can't cancel the sleep timer the fiber would be
+resumed twice: once manually, and a second time when the timer expires.
 
-> [!CAUTION]
-> Verify if the select action timeout mechanism can resume *twice*.
+Crystal also implements a timeout action for `select`, which is great when we
+have channels, but would require to create virtual channels when all we need is
+the timeout feature.
 
 Adding timeouts to all the synchronization primitives in the stdlib, and
-possibly to custom ones in shards and applications, shouldn't be much harder
-than calling `#sleep`, or need to hack into the private `Fiber#timeout_event`.
+possibly to custom ones in shards and applications, should ideally not be much
+harder than calling `#sleep`.
+
+
+# Terminology
+
+- `event loop` enables non-blocking operations. See [RFC 0007] for details.
+
+- `timer` refers to an event that triggers after after some time has elapsed or
+  an absolute time. Timers are handled by the event loop. See [RFC 0012] for
+  details.
+
+- `sleep` refers to the [`sleep(time)`] method that suspends the execution of
+  the current fiber for some time. It creates a non cancelable timer in the
+  event loop.
+
+- `timeout` refers to the proposed ability to suspend the execution of a fiber
+  until it is explicitly resumed (canceled timeout) or some time has elapsed
+  (expired timeout). It would create a cancelable timer in the event loop.
 
 
 # Guide-level explanation
 
-The complexity of timeout over sleep is that it can be canceled, which leads to
-synchronization issues. For example, multiple threads may try to cancel the
-timeout at the same time, and yet another thread might try to process the
-expired timer too.
+Let's take a mutex with the ability to try to lock and give up after a certain
+timeout as an example.
 
-We want the fiber to be resumed *once* and to report whether the timeout expired
-or was canceled. We need synchronization and a mean to decide which thread
-resolves the timeout and will enqueue the fiber. There can of course be only
-one.
+On failure to acquire the lock, the current fiber shall add itself into a
+waiting list (private to the mutex), and arm a timeout (aka cancelable timer).
+For reasons explained in the [Rationale section](#rationale) below, we need a
+cancelation token to safely cancel the timeout, and thus need to save both the
+current fiber and the cancelation token to the mutex' waiting list. The timer
+itself shall be handled by the event loop implementation (see the [Reference
+section](#reference-level-explanation)).
+
+When the lock is released, the mutex shall try to wake a waiting fiber. We can't
+enqueue the fiber directly, because the timer may have expired and the event
+loop have already enqueued the fiber; we must prevent this situation to ensure
+that the fiber is only resumed once.
+
+To solve this, we introduce a rule: the one that can cancel the timeout is the
+only one that can enqueue the fiber (it owns the fiber). Both the mutex and the
+event loop must try to cancel the timeout using the cancelation token (created
+by the lock method). On success the mutex must enqueue the fiber, on failure it
+simply skips the fiber (another fiber or thread already enqueued it) and the
+mutex shall try to wake another waiting fiber instead.
+
+When the suspended fiber is finally resumed, it must verify the outcome (expired
+or canceled) and act accordingly:
+
+- If the timeout expired, the fiber must remove itself from the mutex waiting
+  list and can return an error or raise an exception for example.
+
+- If the timeout was canceled, then the fiber was manually resumed by the unlock
+  method and shall try to acquire the lock again. On failure it would add itself
+  back into the waiting list and arm another timeout for the remaining time.
+
+The [Reference](#reference-level-section) below contains an example
+implementation for such a cancelable mutex using the proposed API.
+
+
+# Rationale
+
+The complexity of a cancelable timer over a simple sleep is that the cancelation
+leads to synchronization issues. For example, multiple threads may try to cancel
+a timeout at the same time while another thread is trying to process the expired
+timer, and only one of these shall resume the fiber. We also need to report
+whether the timer expired or has been canceled.
 
 A straightforward solution is to use an atomic: the fiber sets the atomic before
 suspending itself, then any attempt to enqueue the fiber must be the one that
@@ -94,64 +150,14 @@ operation:
 > by 2 (wrapping on overflow): `token = (atm.get | 1) &+ 2` while resolving the
 > timeout shall unset the first bit: `token & ~1`.
 
-## Synchronization primitives
-
-Let's take a mutex for the example.
-
-On failure to acquire the lock, the current fiber will want to add itself into a
-waiting list (private to the mutex). As explained in the previous section, we
-must memorize the cancelation token to be able to cancel it, so it must set the
-timeout, get the token, and then add the fiber and the token to the mutex
-waiting list, then delegate the timeout to the event loop implementation.
-
-When another fiber unlocks, the mutex must try to wake a waiting fiber. While
-doing this it must resolve the timeout using its cancelation token. On success
-it must enqueue the fiber, on failure it must skip the fiber because another
-fiber or thread has already enqueued the fiber or will enqueue it, and the mutex
-shall try to wake another waiting fiber.
-
-The resumed fiber then will know if the timer expired or was canceled, and can
-act accordingly:
-
-- If the timeout expired, the fiber must remove itself from the waiting list and
-  return an error or raise an exception for example.
-
-- If the timeout was canceled, then the fiber was manually resumed by an unlock
-  and shall try to acquire the lock again. On failure it would add itself back
-  into the waiting list and set a timeout for the remaining time (if any).
-
-## Fiber
-
-The `Fiber` object shall hold the atomic value, and provide methods to create
-the cancelation token, start waiting and to resolve the timeout.
-
-## Event loop
-
-Each event loop shall provide a method to suspend the calling fiber for a
-duration and needs to be given the cancelation token so it can resolve the
-timeout when the timer expires. On success, it shall mark the event as expired
-and enqueue the fiber. On failure, it must skip the fiber (it was canceled).
-
-When the suspended fiber resumes, it must check the state of the timer. When
-expired, the method can simply return, otherwise it must cancel the timer event.
-
-> [!NOTE]
-> We could cancel the timer event sooner, but that would require a method on
-> Fiber to cancel the timeout, another method on every event loop to cancel the
-> timer, and the event loops would have to memorize the timer event for every
-> fiber in a timeout, for example using a hashmap.
->
-> By delaying the timer cancelation to when the fiber is resumed, we can avoid
-> all that, at the expense of keeping the timer event a bit longer than
-> necessary in the timers' data structure.
 
 # Reference-level explanation
 
 ## Public API (`Fiber`)
 
-We introduce an enum: `Fiber::TimeoutResult` with two values `CANCELED` and
-`EXPIRED`. We could return a `Bool` instead, but then we'd be left to wonder
-whether `true` means expired or canceled.
+We introduce an enum: `Fiber::TimeoutResult` with two values: `CANCELED` and
+`EXPIRED`. We could return a `Bool` but then we'd be left wondering whether
+`true` means expired or canceled.
 
 We introduce a `TimeoutToken` alias for the atomic value type. This abstracts
 the underlying type as an 'opaque' type. We could introduce a wrapper struct
@@ -164,10 +170,10 @@ The public API can do with a couple methods:
   Sets the flag and increments the value of the atomic. Yields the cancelation
   token (aka the new atomic value) so the caller can record it, then delegates
   to the event loop to suspend the calling fiber and eventually resume it when
-  the timeout expired if it hasn't been canceled already.
+  the timeout expires if it hasn't been canceled already.
 
-  Returns `Fiber::TimeoutToken::CANCELED` if the timeout was canceled, and
-  `Fiber::TimeoutToken::EXPIRED` if the timeout expired.
+  Returns `Fiber::TimeoutToken::CANCELED` if the timeout was canceled.
+  Returns `Fiber::TimeoutToken::EXPIRED` if the timeout expired.
 
   All the details to add, trigger and remove the timer are fully delegated to
   the event loop implementations.
@@ -185,9 +191,11 @@ Code calling `Fiber.timeout` must call `Fiber#resolve_timeout?` with the
 cancelation token and to act accordingly to the result—enqueue the fiber iff
 the timeout was canceled.
 
-## Internal API (`Crystal::EventLoop`)
+## Internal API
 
-We introduce one method:
+The `Fiber` object holds the atomic value as an instance variable.
+
+Each `Crystal::EventLoop` implement must implement one method:
 
 - `Crystal::EventLoop#timeout(duration : Time::Span, token : Fiber::TimeoutToken) : Bool`
 
@@ -198,55 +206,76 @@ We introduce one method:
   calling `fiber.resolve_timeout?(token)` and enqueue the fiber if an only if it
   returned true. It must skip the fiber otherwise.
 
+> [!NOTE]
+> We could cancel the timer event sooner, but that would require a method on
+> `Fiber` to cancel the timeout, another method on every event loop to cancel
+> the timer, and the event loops would have to memorize the timer event for
+> every fiber in a timeout, for example using a hashmap.
+>
+> By delaying the timer cancelation to when the fiber is resumed, we can avoid
+> all that, at the expense of keeping the timer event a bit longer than
+> necessary in the timers' data structure, yet still remove it before it goes
+> out of scope.
+
 ## Example
 
-Following is a potential implementation for the mutex example from the guide
-section above.
+Following is an example implementation of how the mutex lock and unlock methods
+could be implemented:
 
 ```crystal
 class CancelableMutex
-  def lock : Nil
-    loop do
-      break if lock_impl?
-      enqueue_waiter(Fiber.current, nil)
-    end
-  end
-
+  # Tries to acquire the lock. Returns true if the lock was acquired. Returns
+  # false if the lock couldn't be acquired before *timeout* is reached.
   def lock?(timeout : Time::Span) : Bool
-    limit = Time.monotonic + timeout
+    expires_at = Time.monotonic + timeout
 
     loop do
-      return true if lock_impl?
+      if lock_impl?
+        # done: lock acquired
+        return true
+      end
 
-      # 1. set the timeout
-      res = Fiber.timeout(limit - Time.monotonic) do |token|
-        # 2. save the cancelation token
+      # 1. arm the timeout
+      result = Fiber.timeout(expires_at - Time.monotonic) do |token|
+        # 2. save the fiber and the cancelation token
         enqueue_waiter(Fiber.current, token)
 
-        # 3. the fiber will now be suspended...
+        # 3. the fiber will be suspended...
       end
-      # 4. and, the fiber has resumed
 
-      return false if res.expired?
+      # 4. the fiber has resumed
+
+      if result.expired?
+        # 5. dequeue the waiter
+        dequeue_waiter
+
+        # done: timeout
+        return false
+      end
+
+      # try again
     end
   end
 
+  # Releases the lock.
   def unlock : Nil
     unlock_impl
 
     while waiter = dequeue_waiter?
       fiber, token = waiter
 
-      if token.nil? || fiber.resolve_timeout?(token)
-        # the waiter had no timeout or we canceled the timeout
+      if fiber.resolve_timeout?(token)
+        # we canceled the timer: enqueue the fiber
         fiber.enqueue
+
+        # done
         break
       end
 
       # try the next waiting fiber
     end
   end
-def
+end
 ```
 
 
@@ -254,12 +283,7 @@ def
 
 None that I can think of.
 
-# Rationale and alternatives
-
-The feature is designed to be low level yet simple and efficient, allowing
-higher level abstractions to easily implement a timeout. Ideally this feature
-might be usable to implement all the different timeouts: select action timeouts,
-IO timeouts for some event loops (this needs to be investigated).
+# Alternatives
 
 An alternative could be to introduce lightweight abstract channels. One such
 channel could have a delayed sent that would be triggered after some duration. A
@@ -275,13 +299,18 @@ on POSIX) or indirectly through synchronization primitives (for example
 
 # Unresolved questions
 
-1. Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` be a struct
+1. Instead of adding a distinct `Fiber.timeout(time)` in addition to
+   `sleep(time)` and `Fiber.suspend` we could introduce a single method that
+   would always create a cancelable timer, for example `Fiber.suspend(time, & :
+   TimeoutToken ->) : TimeoutResult`.
+
+2. Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` be a struct
    with the fiber reference and the cancelation token, and have a `#resolve?`
    method to resolve the token. That would be more OOP and open more evolutions,
    though it would make the token larger (pointer + u32 + padding) as well as
    the duplicate the fiber reference that is likely to be already kept.
 
-2. We may want to use *absolute time instead of relative duration*, so every use
+3. We may want to use *absolute time instead of relative duration*, so every use
    cases that need to retry wouldn't have to deal with caculating the remaining
    time on each iteration, and would only need to calculate the absolute limit
    (now + timeout).
@@ -289,12 +318,9 @@ on POSIX) or indirectly through synchronization primitives (for example
    The problem is that monotonic times and durations are represented using the
    same type (`Time::Span`), and `#sleep` uses relative time. Using absolute
    time would be confusing. Maybe we can support *both* and add an `absolute`
-   argument, that would default to `false`?
+   argument, that would default to `false`? Or have two overloads using
+   different named arguments, for example `duration` vs `until`.
 
-   Only `Fiber.timeout()` would need the argument. The event loop API can be
-   fixed to use either absolute or relative times only, since implementations
-   may already use absolute times internally—the epoll and kqueue event loops
-   use absolute time for example.
 
 # Future possibilities
 
@@ -308,6 +334,9 @@ sleep and yield in a specific timeout case, as well as other event loops for IO
 timeouts (to be verified), as well as for the select action timeout that
 currently relies on a custom solution.
 
+[RFC 0007]: https://github.com/crystal-lang/rfcs/pull/7
+[RFC 0012]: https://github.com/crystal-lang/rfcs/pull/12
+[`sleep(time)`](https://crystal-lang.org/api/1.17.1/toplevel.html#sleep(time:Time::Span):Nil-class-method)
 [timer_create(2)]: https://www.man7.org/linux/man-pages/man2/timer_create.2.html
 [pthread_cond_timedwait(3)]: https://www.man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html
 [sync shard]: https://github.com/ysbaddaden/sync
