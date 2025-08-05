@@ -8,7 +8,7 @@ Issue: N/A
 # Summary
 
 I propose to introduce a cancelable timer, designed to be low level, yet simple
-and efficient, allowing higher level abstractions, such a pool of connections
+and efficient, allowing higher level abstractions, such as a pool of connections
 for example, to easily add timeout features.
 
 
@@ -159,18 +159,19 @@ We introduce an enum: `Fiber::TimeoutResult` with two values: `CANCELED` and
 `EXPIRED`. We could return a `Bool` but then we'd be left wondering whether
 `true` means expired or canceled.
 
-We introduce a `TimeoutToken` alias for the atomic value type. This abstracts
-the underlying type as an 'opaque' type. We could introduce a wrapper struct
-with only a `#value` method to make it fully opaque.
+We introduce a `TimeoutToken` struct for wrapping the atomic value and to
+represent the cancelation token as a fully opaque type (you can't inadvertently
+tamper with the value).
 
 The public API can do with a couple methods:
 
-- `Fiber.timeout(duration : Time::Span, & : Fiber::TimeoutToken) : Fiber::TimeoutResult`
+- `Fiber.timeout(duration : Time::Span, & : Fiber::TimeoutToken ->) : Fiber::TimeoutResult`
 
   Sets the flag and increments the value of the atomic. Yields the cancelation
-  token (aka the new atomic value) so the caller can record it, then delegates
-  to the event loop to suspend the calling fiber and eventually resume it when
-  the timeout expires if it hasn't been canceled already.
+  token (aka the new atomic value) so the caller can record it (the block is a
+  called-before-suspend callback), then delegates to the event loop to suspend
+  the calling fiber and eventually resume it when the timeout expires, if it
+  hasn't been canceled already.
 
   Returns `Fiber::TimeoutToken::CANCELED` if the timeout was canceled.
   Returns `Fiber::TimeoutToken::EXPIRED` if the timeout expired.
@@ -187,9 +188,10 @@ The public API can do with a couple methods:
 
   On success, the caller must enqueue the fiber. On failure, the caller musn't.
 
-Code calling `Fiber.timeout` must call `Fiber#resolve_timeout?` with the
-cancelation token and to act accordingly to the result—enqueue the fiber iff
-the timeout was canceled.
+Code calling `Fiber.timeout` is expected to call `Fiber#resolve_timeout?` to try
+and cancel the timeout at some point, otherwise calling `sleep` would be more
+efficient (no synchronization required) and to enqueue the fiber iff it resolved
+the timeout.
 
 ## Internal API
 
@@ -285,11 +287,28 @@ None that I can think of.
 
 # Alternatives
 
-An alternative could be to introduce lightweight abstract channels. One such
-channel could have a delayed sent that would be triggered after some duration. A
-select action could merely wait on this. Yet, such an delayed channel might be
-implementable on top of the timeout feature presented here. It actually feels
-more like a potential evolution for `select`.
+An alternative to the whole feature could be to introduce lightweight abstract
+channels. One such channel could have a delayed sent that would be triggered
+after some duration. A select action could merely wait on this. Yet, such an
+delayed channel might be implementable on top of the timeout feature presented
+here. It actually feels more like a potential evolution for `select`.
+
+An alternative to the `Fiber.timeout(duration, &)` method would be to have
+multiple methods instead (see below for an example). The control-flow might be
+easier to grasp, though it might not be better in practice since it requires
+multiple steps instead of a single method with a called-before-suspend block.
+
+```crystal
+token = Fiber.create_timeout(duration)
+# record the current fiber and the cancelation token
+sleep(token)
+```
+
+Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` keep the fiber
+reference in addition to the cancelation token, and have a `#resolve?` method to
+resolve the token. That would be more OOP and maybe allow  more evolutions, but
+it would also make the token larger (pointer + u32 + padding) in addition to
+duplicate the fiber reference that is likely to be already kept.
 
 # Prior art
 
@@ -304,13 +323,7 @@ on POSIX) or indirectly through synchronization primitives (for example
    would always create a cancelable timer, for example `Fiber.suspend(time, & :
    TimeoutToken ->) : TimeoutResult`.
 
-2. Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` be a struct
-   with the fiber reference and the cancelation token, and have a `#resolve?`
-   method to resolve the token. That would be more OOP and open more evolutions,
-   though it would make the token larger (pointer + u32 + padding) as well as
-   the duplicate the fiber reference that is likely to be already kept.
-
-3. We may want to use *absolute time instead of relative duration*, so every use
+2. We may want to use *absolute time instead of relative duration*, so every use
    cases that need to retry wouldn't have to deal with caculating the remaining
    time on each iteration, and would only need to calculate the absolute limit
    (now + timeout).
