@@ -336,7 +336,7 @@ currently relies on a custom solution.
 
 [RFC 0007]: https://github.com/crystal-lang/rfcs/pull/7
 [RFC 0012]: https://github.com/crystal-lang/rfcs/pull/12
-[`sleep(time)`](https://crystal-lang.org/api/1.17.1/toplevel.html#sleep(time:Time::Span):Nil-class-method)
+[`sleep(time)`]: https://crystal-lang.org/api/1.17.1/toplevel.html#sleep(time:Time::Span):Nil-class-method
 [timer_create(2)]: https://www.man7.org/linux/man-pages/man2/timer_create.2.html
 [pthread_cond_timedwait(3)]: https://www.man7.org/linux/man-pages/man3/pthread_cond_timedwait.3p.html
 [sync shard]: https://github.com/ysbaddaden/sync
