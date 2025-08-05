@@ -220,7 +220,7 @@ Each `Crystal::EventLoop` implement must implement one method:
 ## Example
 
 Following is an example implementation of how the mutex lock and unlock methods
-could be implemented:
+from the [Guide section](#guide-level-explanation) could be implemented:
 
 ```crystal
 class CancelableMutex
