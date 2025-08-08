@@ -1,7 +1,7 @@
 ---
 Feature Name: cancelable-timers
 Start Date: 2025-08-02
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0014"
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/14"
 PoC PR: "https://github.com/crystal-lang/crystal/pull/16070"
 Issue: N/A
 ---
