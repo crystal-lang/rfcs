@@ -160,13 +160,14 @@ We introduce an enum: `Fiber::TimeoutResult` with two values: `CANCELED` and
 `EXPIRED`. We could return a `Bool` but then we'd be left wondering whether
 `true` means expired or canceled.
 
-We introduce a `TimeoutToken` struct for wrapping the atomic value and to
-represent the cancelation token as a fully opaque type (you can't inadvertently
-tamper with the value).
+We introduce a `Fiber::CancelationToken` struct for wrapping the atomic value
+and to represent the cancelation token as a fully opaque type (you can't
+inadvertently tamper with the value).
 
-The public API can do with a couple methods:
+The public API can do with a few methods:
 
-- `Fiber.timeout(duration : Time::Span, & : Fiber::TimeoutToken ->) : Fiber::TimeoutResult`
+- `Fiber.sleep(duration : Time::Span, & : Fiber::CancelationToken ->) : Fiber::TimeoutResult`
+- `Fiber.sleep(*, until : Time::Span, & : Fiber::CancelationToken ->) : Fiber::TimeoutResult`
 
   Sets the flag and increments the value of the atomic. Yields the cancelation
   token (aka the new atomic value) so the caller can record it (the block is a
@@ -180,7 +181,11 @@ The public API can do with a couple methods:
   All the details to add, trigger and remove the timer are fully delegated to
   the event loop implementations.
 
-- `Fiber#resolve_timeout?(token : Fiber::TimeoutToken) : Bool`
+  The two variants use different time: the first variant takes a `duration` (how
+  long to wait since the monotonic now) while the second one waits `until` an
+  absolute monotonic time.
+
+- `Fiber#resolve_timer?(token : Fiber::CancelationToken) : Bool`
 
   Tries to unset the flag of the timeout atomic value for `fiber`. It must fail
   if the atomic value isn't `token` anymore (the flag has already been unset or
@@ -189,10 +194,9 @@ The public API can do with a couple methods:
 
   On success, the caller must enqueue the fiber. On failure, the caller musn't.
 
-Code calling `Fiber.timeout` is expected to call `Fiber#resolve_timeout?` to try
-and cancel the timeout at some point, otherwise calling `sleep` would be more
-efficient (no synchronization required) and to enqueue the fiber iff it resolved
-the timeout.
+> [!NOTE]
+> `::sleep(time)` can merely call `Fiber.sleep(time) { }`, discarding the
+> cancelation token so the timer always expires.
 
 ## Internal API
 
@@ -200,14 +204,18 @@ The `Fiber` object holds the atomic value as an instance variable.
 
 Each `Crystal::EventLoop` implement must implement one method:
 
-- `Crystal::EventLoop#timeout(duration : Time::Span, token : Fiber::TimeoutToken) : Bool`
+- `Crystal::EventLoop#sleep(time : Time::Span, token : Fiber::CancelationToken) : Bool`
 
-  The event loop shall suspend the current fiber for `duration` and returns
-  `true` if the timeout expired, and `false` otherwise.
+  The event loop shall suspend the current fiber until the absolute `time` (as
+  per the monotonic clock) is reached. It returns `true` if the timeout expired,
+  and `false` otherwise.
 
   When processing the timer event, the event loop must resolve the timeout by
-  calling `fiber.resolve_timeout?(token)` and enqueue the fiber if an only if it
-  returned true. It must skip the fiber otherwise.
+  calling `fiber.resolve_timer?(token)`. In theory it should only enqueue the
+  fiber iff it returned true and skip the fiber otherwise. In practice, there
+  might a race condition (the timer is canceled while the event loop is
+  processing the timer) so the event loop is free behave as it requires as long
+  as it can guarantee that the fiber will only ever be resumed once.
 
 > [!NOTE]
 > We could cancel the timer event sooner, but that would require a method on
@@ -239,7 +247,7 @@ class CancelableMutex
       end
 
       # 1. arm the timeout
-      result = Fiber.timeout(expires_at - Time.monotonic) do |token|
+      result = Fiber.sleep(until: expires_at) do |token|
         # 2. save the fiber and the cancelation token
         enqueue_waiter(Fiber.current, token)
 
@@ -267,7 +275,7 @@ class CancelableMutex
     while waiter = dequeue_waiter?
       fiber, token = waiter
 
-      if fiber.resolve_timeout?(token)
+      if fiber.resolve_timer?(token)
         # we canceled the timer: enqueue the fiber
         fiber.enqueue
 
@@ -294,22 +302,22 @@ after some duration. A select action could merely wait on this. Yet, such an
 delayed channel might be implementable on top of the timeout feature presented
 here. It actually feels more like a potential evolution for `select`.
 
-An alternative to the `Fiber.timeout(duration, &)` method would be to have
+An alternative to the `Fiber.sleep(duration, &)` method would be to have
 multiple methods instead (see below for an example). The control-flow might be
 easier to grasp, though it might not be better in practice since it requires
 multiple steps instead of a single method with a called-before-suspend block.
 
 ```crystal
-token = Fiber.create_timeout(duration)
+token = Fiber.new_cancelation_token
 # record the current fiber and the cancelation token
-sleep(token)
+sleep(duration, token)
 ```
 
-Instead of `Fiber#resolve_timeout?` we could have `TimeoutToken` keep the fiber
-reference in addition to the cancelation token, and have a `#resolve?` method to
-resolve the token. That would be more OOP and maybe allow  more evolutions, but
-it would also make the token larger (pointer + u32 + padding) in addition to
-duplicate the fiber reference that is likely to be already kept.
+Instead of `Fiber#resolve_timer?` we could have `CancelationToken` keep the
+fiber reference in addition to the cancelation token, and have a `#resolve?`
+method to resolve the token. That would be more OOP and maybe allow  more
+evolutions, but it would also make the token larger (pointer + u32 + padding) in
+addition to duplicate the fiber reference that is likely to be already kept.
 
 # Prior art
 
@@ -317,23 +325,10 @@ Most runtimes expose cancelable timers, directly (for example [timer_create(2)]
 on POSIX) or indirectly through synchronization primitives (for example
 [pthread_cond_timedwait(3)] on POSIX).
 
+
 # Unresolved questions
 
-1. Instead of adding a distinct `Fiber.timeout(time)` in addition to
-   `sleep(time)` and `Fiber.suspend` we could introduce a single method that
-   would always create a cancelable timer, for example `Fiber.suspend(time, & :
-   TimeoutToken ->) : TimeoutResult`.
-
-2. We may want to use *absolute time instead of relative duration*, so every use
-   cases that need to retry wouldn't have to deal with caculating the remaining
-   time on each iteration, and would only need to calculate the absolute limit
-   (now + timeout).
-
-   The problem is that monotonic times and durations are represented using the
-   same type (`Time::Span`), and `#sleep` uses relative time. Using absolute
-   time would be confusing. Maybe we can support *both* and add an `absolute`
-   argument, that would default to `false`? Or have two overloads using
-   different named arguments, for example `duration` vs `until`.
+N/A
 
 
 # Future possibilities
