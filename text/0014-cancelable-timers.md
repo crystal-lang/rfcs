@@ -185,7 +185,7 @@ The public API can do with a few methods:
   long to wait since the monotonic now) while the second one waits `until` an
   absolute monotonic time.
 
-- `Fiber#resolve_timer?(token : Fiber::CancellationToken) : Bool`
+- `Fiber#cancel_suspension?(token : Fiber::CancellationToken) : Bool`
 
   Tries to unset the flag of the timeout atomic value for `fiber`. It must fail
   if the atomic value isn't `token` anymore (the flag has already been unset or
@@ -211,9 +211,9 @@ Each `Crystal::EventLoop` implement must implement one method:
   and `false` otherwise.
 
   When processing the timer event, the event loop must resolve the timeout by
-  calling `fiber.resolve_timer?(token)`. In theory it should only enqueue the
-  fiber iff it returned true and skip the fiber otherwise. In practice, there
-  might a race condition (the timer is canceled while the event loop is
+  calling `fiber.cancel_suspension?(token)`. In theory it should only enqueue
+  the fiber iff it returned true and skip the fiber otherwise. In practice,
+  there might a race condition (the timer is canceled while the event loop is
   processing the timer) so the event loop is free behave as it requires as long
   as it can guarantee that the fiber will only ever be resumed once.
 
@@ -275,7 +275,7 @@ class CancelableMutex
     while waiter = dequeue_waiter?
       fiber, token = waiter
 
-      if fiber.resolve_timer?(token)
+      if fiber.cancel_suspension?(token)
         # we canceled the timer: enqueue the fiber
         fiber.enqueue
 
@@ -313,7 +313,7 @@ token = Fiber.new_cancellation_token
 sleep(duration, token)
 ```
 
-Instead of `Fiber#resolve_timer?` we could have `CancellationToken` keep the
+Instead of `Fiber#cancel_suspension?` we could have `CancellationToken` keep the
 fiber reference in addition to the cancellation token, and have a `#resolve?`
 method to resolve the token. That would be more OOP and maybe allow  more
 evolutions, but it would also make the token larger (pointer + u32 + padding) in
