@@ -59,8 +59,8 @@ timeout as an example.
 On failure to acquire the lock, the current fiber shall add itself into a
 waiting list (private to the mutex), and arm a timeout (aka cancelable timer).
 For reasons explained in the [Rationale section](#rationale) below, we need a
-cancelation token to safely cancel the timeout, and thus need to save both the
-current fiber and the cancelation token to the mutex' waiting list. The timer
+cancellation token to safely cancel the timeout, and thus need to save both the
+current fiber and the cancellation token to the mutex' waiting list. The timer
 itself shall be handled by the event loop implementation (see the [Reference
 section](#reference-level-explanation)).
 
@@ -71,7 +71,7 @@ that the fiber is only resumed once.
 
 To solve this, we introduce a rule: the one that can cancel the timeout is the
 only one that can enqueue the fiber (it owns the fiber). Both the mutex and the
-event loop must try to cancel the timeout using the cancelation token (created
+event loop must try to cancel the timeout using the cancellation token (created
 by the lock method). On success the mutex must enqueue the fiber, on failure it
 simply skips the fiber (another fiber or thread already enqueued it) and the
 mutex shall try to wake another waiting fiber instead.
@@ -92,7 +92,7 @@ implementation for such a cancelable mutex using the proposed API.
 
 # Rationale
 
-The complexity of a cancelable timer over a simple sleep is that the cancelation
+The complexity of a cancelable timer over a simple sleep is that the cancellation
 leads to synchronization issues. For example, multiple threads may try to cancel
 a timeout at the same time while another thread is trying to process the expired
 timer, and only one of these shall resume the fiber. We also need to report
@@ -118,7 +118,7 @@ ABA issue in practice. For example, an UInt32 word with a 1 bit flag would need
 2,147,483,648 iterations!
 
 The counterpart is that every waiter and timer event must know the current
-atomic value (thereafter called `cancelation token`) to be able to resolve the
+atomic value (thereafter called `cancellation token`) to be able to resolve the
 timeout. I believe this is an acceptable trade off.
 
 > [!NOTE]
@@ -160,16 +160,16 @@ We introduce an enum: `Fiber::TimeoutResult` with two values: `CANCELED` and
 `EXPIRED`. We could return a `Bool` but then we'd be left wondering whether
 `true` means expired or canceled.
 
-We introduce a `Fiber::CancelationToken` struct for wrapping the atomic value
-and to represent the cancelation token as a fully opaque type (you can't
+We introduce a `Fiber::CancellationToken` struct for wrapping the atomic value
+and to represent the cancellation token as a fully opaque type (you can't
 inadvertently tamper with the value).
 
 The public API can do with a few methods:
 
-- `Fiber.sleep(duration : Time::Span, & : Fiber::CancelationToken ->) : Fiber::TimeoutResult`
-- `Fiber.sleep(*, until : Time::Span, & : Fiber::CancelationToken ->) : Fiber::TimeoutResult`
+- `Fiber.sleep(duration : Time::Span, & : Fiber::CancellationToken ->) : Fiber::TimeoutResult`
+- `Fiber.sleep(*, until : Time::Span, & : Fiber::CancellationToken ->) : Fiber::TimeoutResult`
 
-  Sets the flag and increments the value of the atomic. Yields the cancelation
+  Sets the flag and increments the value of the atomic. Yields the cancellation
   token (aka the new atomic value) so the caller can record it (the block is a
   called-before-suspend callback), then delegates to the event loop to suspend
   the calling fiber and eventually resume it when the timeout expires, if it
@@ -185,7 +185,7 @@ The public API can do with a few methods:
   long to wait since the monotonic now) while the second one waits `until` an
   absolute monotonic time.
 
-- `Fiber#resolve_timer?(token : Fiber::CancelationToken) : Bool`
+- `Fiber#resolve_timer?(token : Fiber::CancellationToken) : Bool`
 
   Tries to unset the flag of the timeout atomic value for `fiber`. It must fail
   if the atomic value isn't `token` anymore (the flag has already been unset or
@@ -196,7 +196,7 @@ The public API can do with a few methods:
 
 > [!NOTE]
 > `::sleep(time)` can merely call `Fiber.sleep(time) { }`, discarding the
-> cancelation token so the timer always expires.
+> cancellation token so the timer always expires.
 
 ## Internal API
 
@@ -204,7 +204,7 @@ The `Fiber` object holds the atomic value as an instance variable.
 
 Each `Crystal::EventLoop` implement must implement one method:
 
-- `Crystal::EventLoop#sleep(time : Time::Span, token : Fiber::CancelationToken) : Bool`
+- `Crystal::EventLoop#sleep(time : Time::Span, token : Fiber::CancellationToken) : Bool`
 
   The event loop shall suspend the current fiber until the absolute `time` (as
   per the monotonic clock) is reached. It returns `true` if the timeout expired,
@@ -223,7 +223,7 @@ Each `Crystal::EventLoop` implement must implement one method:
 > the timer, and the event loops would have to memorize the timer event for
 > every fiber in a timeout, for example using a hashmap.
 >
-> By delaying the timer cancelation to when the fiber is resumed, we can avoid
+> By delaying the timer cancellation to when the fiber is resumed, we can avoid
 > all that, at the expense of keeping the timer event a bit longer than
 > necessary in the timers' data structure, yet still remove it before it goes
 > out of scope.
@@ -248,7 +248,7 @@ class CancelableMutex
 
       # 1. arm the timeout
       result = Fiber.sleep(until: expires_at) do |token|
-        # 2. save the fiber and the cancelation token
+        # 2. save the fiber and the cancellation token
         enqueue_waiter(Fiber.current, token)
 
         # 3. the fiber will be suspended...
@@ -308,13 +308,13 @@ easier to grasp, though it might not be better in practice since it requires
 multiple steps instead of a single method with a called-before-suspend block.
 
 ```crystal
-token = Fiber.new_cancelation_token
-# record the current fiber and the cancelation token
+token = Fiber.new_cancellation_token
+# record the current fiber and the cancellation token
 sleep(duration, token)
 ```
 
-Instead of `Fiber#resolve_timer?` we could have `CancelationToken` keep the
-fiber reference in addition to the cancelation token, and have a `#resolve?`
+Instead of `Fiber#resolve_timer?` we could have `CancellationToken` keep the
+fiber reference in addition to the cancellation token, and have a `#resolve?`
 method to resolve the token. That would be more OOP and maybe allow  more
 evolutions, but it would also make the token larger (pointer + u32 + padding) in
 addition to duplicate the fiber reference that is likely to be already kept.
