@@ -1,7 +1,7 @@
 ---
 Feature Name: time-monotonic
 Start Date: 2025-08-28
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/15"
 Issue: https://forum.crystal-lang.org/t/ambiguous-use-of-time-span-for-duration-and-monotonic-clock/8324
 ---
 
