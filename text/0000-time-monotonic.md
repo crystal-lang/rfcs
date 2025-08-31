@@ -79,6 +79,12 @@ struct Time::Monotonic
   def -(other : self) : Time::Span
   end
 
+  def +(other : Time::Span) : self
+  end
+
+  def -(other : Time::Span) : self
+  end
+
   def <=>(other : self) : Int32
   end
 end
@@ -137,8 +143,6 @@ Other standard libraries distinguish between *monotonic instants* and
 
 # Future possibilities
 
-- `#+` and `#-` methods with `Time::Span`: Not essential, but could be useful.
-  (could be part of this RFC?)
 - `#elapsed`: Returns the amount of time elapsed since `self` and ensures the
   resulting duration is positive or zero. (could be part of this RFC?)
 - A stopwatch / timer implementation, similar to Zig's [`std.time.Timer`] (see
