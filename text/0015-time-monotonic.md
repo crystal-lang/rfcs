@@ -99,6 +99,13 @@ existing platform API abstraction in `Crystal::System::Time.monotonic`.
 [`Time.measure(&)`] stays unaffected except updating the implementation to the
 new API.
 
+## Glossary
+
+- **monotonic:** Strictly non-decreasing: any clock reading is greater or equal to any previous reading. *Effectively this means the clock is not affected by manual changes to the system clock or mechanisms like NTP sync. A monotonic clock may or may not advance while the system is suspended.*
+- **strictly increasing:** Any clock reading is greater than any previous reading. *The clocks exposed by the operating system usually cannot guarantee this: there is a chance that consecutive calls may return the same reading.*
+- **steady:** Clock ticks at a constant rate, i.e. the length of a unit of time is fixed and there are no discontinuous jumps. *Monotonic clocks are usually steady (at least as far as hardware imperfection allows). Strict steadiness is not guaranteed. The Linux kernel for example may adjust the `CLOCK_MONOTONIC` tick rate to ensure clock discipline. This is usually a gradual slewing, but might be more noticeable jumps for large corrections.*
+- **calendar time:** A clock tracking date + time of day. It is usually synced to civil time via NTP or manual setting and can jump arbitrarily for clock adjustments. *That makes it unsuitable for reliably measuring elapsed time.*
+
 # Drawbacks
 
 - This introduces a new type, increasing API surface area.
