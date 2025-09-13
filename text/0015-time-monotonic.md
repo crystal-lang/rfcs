@@ -64,6 +64,33 @@ it needs updating as well. This is not trivial to automate.
 
 # Reference-level explanation
 
+We introduce a new type that represents a reading of a monotonic nondecreasing
+clock for the purpose of measuring elapsed time or timing an event in the future.
+
+Instants are opaque value that can only be compared to one another.
+The only useful values are differences between readings, represented as `Time::Span`.
+
+Clock readings are guaranteed, barring [platform bugs], to be no less than any
+previous reading.
+
+The measurement itself is expected to be fast (low latency) and precise within
+nanosecond resolution. This means it might not provide the best available
+accuracy for long-term measurements.
+
+The clock is not guaranteed to be steady. Ticks of the underlying clock might
+vary in length. The clock may jump forwards or experience time dilation. But
+does not go backwards.
+
+The clock is expected to tick while the system is suspended. But this cannot be
+guaranteed on all platforms.
+
+The clock is only guaranteed to apply to the current process. In practice it is
+usually relative to system boot, so should be interchangeable between processes.
+But this is not guaranteed on all platforms.
+
+Monotonicity is expected, but cannot be strictly guaranteed due to OS or
+hardware bugs.
+
 The new type implements a subset of the API of `Time::Span` (and `Time`)
 retaining the same logic.
 Existing uses should continue to work as before, despite the type change.
@@ -94,7 +121,8 @@ end
 
 Internally, the type stores the raw monotonic clock reading in nanoseconds as an
 `Int64`, consistent with `Time::Span`.  The implementation builds on the
-existing platform API abstraction in `Crystal::System::Time.monotonic`.
+existing platform API abstraction in `Crystal::System::Time.monotonic`. We might
+want to introduce some adjustments for better aligned semantics.
 
 [`Time.measure(&)`] stays unaffected except updating the implementation to the
 new API.
@@ -135,11 +163,6 @@ Other standard libraries distinguish between *monotonic instants* and
     about _what_ it is. Aligns with existing `Time.monotonic`.
   - `Time::Instant`: More generic, leaves room for multiple backends.
   - ?
-- Monotonic clocks can have different characteristics about whether they
-  progress while the system is suspended. Should there be support for different
-  clocks? See [`CLOCK_MONOTONIC` vs
-  `CLOCK_BOOTTIME`](https://man7.org/linux/man-pages/man2/timerfd_create.2.html).
-  This affects the naming decision.
 - The `#-` method for calculating a duration between two instants is simple, but
   can lead to mistakes based on the order of operands. It's also susceptiple to
   errors in monotonicity which can lead to negative durations.
