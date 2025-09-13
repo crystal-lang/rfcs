@@ -19,7 +19,7 @@ duration" or "an absolute monotonic reading". This duplication can lead to
 confusion and accidental misuse.
 
 The expected outcome is a clearer and safer API where:
-- `Time::Monotonic` represents a single point on the monotonic timeline.
+- `Time::Instant` represents a single point on the monotonic timeline.
 - `Time::Span` continues to represent a duration.
 - Subtracting two `Monotonic` instants yields a `Span`.
 - Adding/subtracting a `Span` to/from an `Monotonic` yields a new `Monotonic`.
@@ -42,9 +42,9 @@ elapsed = Time.monotonic - start # : Time::Span
 This RFC: Clearer
 
 ```crystal
-start = Time::Monotonic.now # : Time::Monotonic
+start = Time::Instant.now # : Time::Instant
 # do something
-elapsed = Time::Monotonic.now - start # : Time::Span
+elapsed = Time::Instant.now - start # : Time::Span
 ```
 
 The key distinction is that `Monotonic` is a point in time on the monotonic
@@ -54,9 +54,9 @@ about and reduces the risk of type misuse.
 ## Transition
 
 `Time.monotonic` gets deprecated, but continues to function. We recommend
-transitioning to `Time::Monotonic.now`.
+transitioning to `Time::Instant.now`.
 
-A simple mechanical replacement `s/Time.monotonic/Time::Monotonic.now/` could be
+A simple mechanical replacement `s/Time.monotonic/Time::Instant.now/` could be
 implemented in tooling (e.g. [ameba](https://github.com/crystal-ameba/ameba)).
 This should generally work fine because the usable API is identical. If the type
 `Time::Span` is encoded in a type restriction (e.g. ivar or method signature),
@@ -96,7 +96,7 @@ retaining the same logic.
 Existing uses should continue to work as before, despite the type change.
 
 ```cr
-struct Time::Monotonic
+struct Time::Instant
   include Comparable(self)
 
   # Returns the current reading of the monotonic clock.
@@ -158,11 +158,6 @@ Other standard libraries distinguish between *monotonic instants* and
 
 # Unresolved questions
 
-- The name for the type is not settled. Alternatives:
-  - `Time::Monotonic`: Concise and explicit about clock domain, but less precise
-    about _what_ it is. Aligns with existing `Time.monotonic`.
-  - `Time::Instant`: More generic, leaves room for multiple backends.
-  - ?
 - The `#-` method for calculating a duration between two instants is simple, but
   can lead to mistakes based on the order of operands. It's also susceptiple to
   errors in monotonicity which can lead to negative durations.
@@ -179,16 +174,16 @@ Other standard libraries distinguish between *monotonic instants* and
   resulting duration is positive or zero. (could be part of this RFC?)
 - A stopwatch / timer implementation, similar to Zig's [`std.time.Timer`] (see
   [#3827])
-- Extract commonalities between `Time` and `Time::Monotonic` into a module type
-  (`Time::Instant`?).
-- Unified clock APIs: e.g., `sleep(until: Time::Monotonic)` and `sleep(until:
+- Extract commonalities between `Time` and `Time::Instant` into a module type
+  (`Time::CockReading`?).
+- Unified clock APIs: e.g., `sleep(until: Time::Instant)` and `sleep(until:
   Time)` (see _[Generalize `#sleep` for monotonic and wall clock]_)
 - Constructor from a raw value, and a converter to a raw value. The use case
   would be to import/export clock readings. This is primarily useful for
   interacting with components outside stdlib (C libraries). Serialization
   probably isn't much relevant though, because the values are really only valid
   inside the current process.
-- We could consider to delegate `Time.monotonic` to `Time::Monotonic.now`
+- We could consider to delegate `Time.monotonic` to `Time::Instant.now`
   eventually. This is a breaking change and can only happen after a deprecation
   period.
 
