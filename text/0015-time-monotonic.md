@@ -117,11 +117,18 @@ struct Time::Instant
   def <=>(other : self) : Int32
   end
 
+  # Returns the duration between `other` and `self`.
+  #
+  # The resulting duration is positive or zero.
+  def duration_since(other : self) : Time::Span
+    (other - self).clamp(Time::Span.zero..)
+  end
+
   # Returns the amount of time elapsed since `self`.
   #
   # The resulting duration is positive or zero.
   def elapsed : Time::Span
-    (self - Instant.now).clamp(Time::Span.zero..)
+    Instant.now.duration_since(self)
   end
 end
 ```
