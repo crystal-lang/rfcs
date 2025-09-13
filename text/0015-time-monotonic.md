@@ -76,6 +76,8 @@ struct Time::Monotonic
   def self.now : self
   end
 
+  def initialize(seconds : )
+
   def -(other : self) : Time::Span
   end
 
