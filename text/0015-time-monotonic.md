@@ -116,6 +116,13 @@ struct Time::Instant
 
   def <=>(other : self) : Int32
   end
+
+  # Returns the amount of time elapsed since `self`.
+  #
+  # The resulting duration is positive or zero.
+  def elapsed : Time::Span
+    (self - Instant.now).clamp(Time::Span.zero..)
+  end
 end
 ```
 
@@ -170,8 +177,8 @@ Other standard libraries distinguish between *monotonic instants* and
 
 # Future possibilities
 
-- `#elapsed`: Returns the amount of time elapsed since `self` and ensures the
-  resulting duration is positive or zero. (could be part of this RFC?)
+- `#elapsed` would allow extensions for different clocks. Calling `#elapsed`
+  would always use the same clock as `self`.
 - A stopwatch / timer implementation, similar to Zig's [`std.time.Timer`] (see
   [#3827])
 - Extract commonalities between `Time` and `Time::Instant` into a module type
