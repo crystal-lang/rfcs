@@ -189,7 +189,7 @@ Other standard libraries distinguish between *monotonic instants* and
 - A stopwatch / timer implementation, similar to Zig's [`std.time.Timer`] (see
   [#3827])
 - Extract commonalities between `Time` and `Time::Instant` into a module type
-  (`Time::CockReading`?).
+  (`Time::ClockReading`?).
 - Unified clock APIs: e.g., `sleep(until: Time::Instant)` and `sleep(until:
   Time)` (see _[Generalize `#sleep` for monotonic and wall clock]_)
 - Constructor from a raw value, and a converter to a raw value. The use case
