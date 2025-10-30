@@ -201,6 +201,9 @@ It might be configured to run on one thread, hence disabling the parallelism of 
 
 **Note**: until Crystal 2.x the default execution context might be ST by default, to avoid breaking changes, and a compilation flag be required to choose MT by default (e.g. `-Dmt`).
 
+> [!NOTE]
+> 2025-10-27: The characteristics of the default context have been adjusted in [#16136](https://github.com/crystal-lang/crystal/pull/16136). See the [API docs](https://crystal-lang.org/api/Fiber/ExecutionContext.html#the-default-execution-context) for details.
+
 ## The additional execution contexts
 
 Applications can create other execution contexts in addition to the default one. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Even allow to tweak the threads' priority and CPU affinity for better allocations on CPU cores.
