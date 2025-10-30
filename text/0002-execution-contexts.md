@@ -197,11 +197,9 @@ Precisions:
 
 Crystal starts a MT execution context with work-stealing where fibers are spawned by default. The goal of this context is to provide an environment that should fit most use cases to freely take advantage of multiple CPU cores, without developers having to think much about it, outside of protecting concurrent accesses to a resource or, preferably, using channels to communicate.
 
-The default execution context starts with parallelism set to 1, which means concurrent execution of spawned fibers. It still runs in parallel with other contexts, though.
-The parallelism of the default context can be changed using `Parallel#resize`.
+It might be configured to run on one thread, hence disabling the parallelism of the default context when needed. Yet, it might still run in parallel with other contexts!
 
-> [!NOTE]
-> 2025-10-27: Updated the characteristics of the default context after adjustments from [#16136](https://github.com/crystal-lang/crystal/pull/16136).
+**Note**: until Crystal 2.x the default execution context might be ST by default, to avoid breaking changes, and a compilation flag be required to choose MT by default (e.g. `-Dmt`).
 
 ## The additional execution contexts
 
