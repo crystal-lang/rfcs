@@ -21,8 +21,8 @@ confusion and accidental misuse.
 The expected outcome is a clearer and safer API where:
 - `Time::Instant` represents a single point on the monotonic timeline.
 - `Time::Span` continues to represent a duration.
-- Subtracting two `Monotonic` instants yields a `Span`.
-- Adding/subtracting a `Span` to/from an `Monotonic` yields a new `Monotonic`.
+- Subtracting two `Instant` instances yields a `Span`.
+- Adding/subtracting a `Span` to/from an `Instant` yields a new `Instant`.
 
 The confusion is aided by the fact that [`Time.measure(&)`] also returns
 `Time::Span` but there it actually represents a duration.
