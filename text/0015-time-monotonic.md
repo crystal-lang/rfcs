@@ -96,14 +96,12 @@ retaining the same logic.
 Existing uses should continue to work as before, despite the type change.
 
 ```cr
+# Returns the current reading of the monotonic clock.
+def Time.instant : Time::Instant
+end
+
 struct Time::Instant
   include Comparable(self)
-
-  # Returns the current reading of the monotonic clock.
-  def self.now : self
-  end
-
-  def initialize(seconds : )
 
   def -(other : self) : Time::Span
   end
