@@ -67,7 +67,8 @@ it needs updating as well. This is not trivial to automate.
 We introduce a new type that represents a reading of a monotonic nondecreasing
 clock for the purpose of measuring elapsed time or timing an event in the future.
 
-Instants are opaque value that can only be compared to one another.
+Instants are opaque values that have no public constructor or raw accessors by
+default. They can only be obtained from the clock and compared to one another.
 The only useful values are differences between readings, represented as `Time::Span`.
 
 Clock readings are guaranteed, barring [platform bugs], to be no less than any
