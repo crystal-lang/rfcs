@@ -42,21 +42,21 @@ elapsed = Time.monotonic - start # : Time::Span
 This RFC: Clearer
 
 ```crystal
-start = Time::Instant.now # : Time::Instant
+start = Time.instant # : Time::Instant
 # do something
-elapsed = Time::Instant.now - start # : Time::Span
+elapsed = Time.instant - start # : Time::Span
 ```
 
-The key distinction is that `Monotonic` is a point in time on the monotonic
+The key distinction is that `Instant` is a point in time on the monotonic
 clock, while `Span` is a duration. This separation makes code easier to reason
 about and reduces the risk of type misuse.
 
 ## Transition
 
 `Time.monotonic` gets deprecated, but continues to function. We recommend
-transitioning to `Time::Instant.now`.
+transitioning to `Time.instant`.
 
-A simple mechanical replacement `s/Time.monotonic/Time::Instant.now/` could be
+A simple mechanical replacement `s/Time.monotonic/Time.instant/` could be
 implemented in tooling (e.g. [ameba](https://github.com/crystal-ameba/ameba)).
 This should generally work fine because the usable API is identical. If the type
 `Time::Span` is encoded in a type restriction (e.g. ivar or method signature),
@@ -126,7 +126,7 @@ struct Time::Instant
   #
   # The resulting duration is positive or zero.
   def elapsed : Time::Span
-    Instant.now.duration_since(self)
+    Time.instant.duration_since(self)
   end
 end
 ```
@@ -195,7 +195,7 @@ Other standard libraries distinguish between *monotonic instants* and
   interacting with components outside stdlib (C libraries). Serialization
   probably isn't much relevant though, because the values are really only valid
   inside the current process.
-- We could consider to delegate `Time.monotonic` to `Time::Instant.now`
+- We could consider to delegate `Time.monotonic` to `Time.instant`
   eventually. This is a breaking change and can only happen after a deprecation
   period.
 
