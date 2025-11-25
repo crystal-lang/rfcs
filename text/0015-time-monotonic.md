@@ -119,7 +119,7 @@ struct Time::Instant
   #
   # The resulting duration is positive or zero.
   def duration_since(other : self) : Time::Span
-    (other - self).clamp(Time::Span.zero..)
+    (self - other).clamp(Time::Span.zero..)
   end
 
   # Returns the amount of time elapsed since `self`.
