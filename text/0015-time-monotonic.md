@@ -205,6 +205,12 @@ Other standard libraries distinguish between *monotonic instants* and
 * **Swift**: [`DispatchTime`] vs. [`DispatchTimeInterval`]
 * **Zig**: [`std.time.Instant`]
 
+* [PEP-0418] is an informative collection of platform capabilities and how they
+  are exposed in the Python API. This is from 2012 and a few things have changed
+  since then (`QueryInterruptTime` from Windows 10 is missing, for example).
+  But the overall picture should still be accurate.
+  Particular interesting is the [classification of clock sources].
+
 # Unresolved questions
 
 - The `#-` method for calculating a duration between two instants is simple, but
@@ -251,5 +257,7 @@ Other standard libraries distinguish between *monotonic instants* and
     https://doc.rust-lang.org/std/time/struct.Instant.html#method.duration_since
 [`std.time.Instant`]: https://ziglang.org/documentation/master/std/#std.time.Instant
 [`std.time.Timer`]: https://ziglang.org/documentation/master/std/#std.time.Timer
+[PEP-0418]: https://peps.python.org/pep-0418/
+[classification of clock sources]: https://peps.python.org/pep-0418/#choosing-the-clock-from-a-list-of-constraints
 [#3827]: https://github.com/crystal-lang/crystal/pull/3827
 [Generalize `#sleep` for monotonic and wall clock]: https://forum.crystal-lang.org/t/generalize-sleep-for-monotonic-and-wall-clock/8383
