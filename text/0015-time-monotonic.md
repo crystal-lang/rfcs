@@ -12,9 +12,9 @@ This replaces the current [`Time.monotonic`] which returns [`Time::Span`].
 
 # Motivation
 
-Currently, `Time.monotonic` returns a `Time::Span`, which represents a
-*duration* rather than an *instant*. This overloading creates semantic
-ambiguity: a `Time::Span` type is overloaded. It can either mean "an elapsed
+Currently, `Time.monotonic` returns a `Time::Span` to represent *instant*.
+But `Time::Span` represents a *duration*, not an *instant*. This overloading
+creates semantic ambiguity: `Time::Span` can either mean "an elapsed
 duration" or "an absolute monotonic reading". This duplication can lead to
 confusion and accidental misuse.
 
