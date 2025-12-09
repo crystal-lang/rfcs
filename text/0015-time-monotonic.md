@@ -155,7 +155,7 @@ In order to implement the expectation of being as steady as possible and tick
 while the system is suspended, some changes to the underlying clock are necessary.
 
 | Platform | System call | Properties |
-|-|-|
+|-|-|-|
 | Darwin | [`clock_gettime(CLOCK_UPTIME_RAW)`] | No adjustment, includes sleep, includes suspend? |
 | FreeBSD| [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
 | Dragonfly | [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
