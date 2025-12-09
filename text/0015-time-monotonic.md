@@ -140,7 +140,7 @@ want to introduce some adjustments for better aligned semantics.
 [`Time.measure(&)`] stays unaffected except updating the implementation to the
 new API.
 
-### Clock Implementation
+## Clock Implementation
 
 The implementation is based on the current `Crystal::Time.monotonic`, like
 `Time.monotonic`. It currently uses the following system calls:
