@@ -238,9 +238,6 @@ Other standard libraries distinguish between *monotonic instants* and
   interacting with components outside stdlib (C libraries). Serialization
   probably isn't much relevant though, because the values are really only valid
   inside the current process.
-- We could consider to delegate `Time.monotonic` to `Time.instant`
-  eventually. This is a breaking change and can only happen after a deprecation
-  period.
 
 [`Time.measure(&)`]:
     https://crystal-lang.org/api/1.17.1/Time.html#measure%28%26%29%3ATime%3A%3ASpan-class-method
