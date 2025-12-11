@@ -3,6 +3,7 @@ Feature Name: time-monotonic
 Start Date: 2025-08-28
 RFC PR: "https://github.com/crystal-lang/rfcs/pull/15"
 Issue: https://forum.crystal-lang.org/t/ambiguous-use-of-time-span-for-duration-and-monotonic-clock/8324
+Implementation PR: "https://github.com/crystal-lang/crystal/pull/16490"
 ---
 
 # Summary
