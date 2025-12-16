@@ -48,7 +48,7 @@ WaitGroup would also allow scenarios that aren't possible with Channel(Nil):
 
 - Signaling fibers: multiple fibers can wait on a WaitGroup, so we can signal a set of fibers at once. For example have a set of fibers wait before starting execution.
 
-# Reference-level explanation 
+# Reference-level explanation
 
 The proposed API:
 
@@ -82,7 +82,7 @@ end
 
 All methods can be called concurrently as well as in parallel (so the type must be thread-safe), and there may be multiple fibers waiting on the same WaitGroup at the same time.
 
-The following example usage is very close to how we'd use a Channel, except that we resume the main fiber once (not 256 times) and we don't pass any value to a queue. 
+The following example usage is very close to how we'd use a Channel, except that we resume the main fiber once (not 256 times) and we don't pass any value to a queue.
 
 ```crystal
 def sliced_operation(wg, i)
