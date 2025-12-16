@@ -158,12 +158,12 @@ while the system is suspended, some changes to the underlying clock are necessar
 | Platform | System call | Properties |
 |-|-|-|
 | Darwin | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (darwin)] | No adjustment, includes sleep, includes suspend? |
-| FreeBSD| [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
-| Dragonfly | [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
+| FreeBSD| [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend |
+| Dragonfly | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend |
 | Linux | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (Linux)] | Slewed, includes sleep, includes suspend |
 | NetBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (NetBSD)] | ? |
 | NetBSD | [`nanouptime`] | Includes sleep, includes suspend |
-| OpenBSD | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (OpenBSD)] | No adjustment, includes sleep, includes suspend |
+| OpenBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (OpenBSD)] | No adjustment, includes sleep, includes suspend |
 | Illumos | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Illumos)] | ? |
 | Windows | [`QueryPerformanceCounter`] | No adjustment, includes sleep, includes suspend? |
 
