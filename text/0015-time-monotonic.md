@@ -161,7 +161,7 @@ while the system is suspended, some changes to the underlying clock are necessar
 | FreeBSD| [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend |
 | Dragonfly | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend |
 | Linux | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (Linux)] | Slewed, includes sleep, includes suspend |
-| NetBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (NetBSD)] | ? |
+| NetBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (NetBSD)] | No adjustment, ? |
 | NetBSD | [`nanouptime`] | Includes sleep, includes suspend |
 | OpenBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (OpenBSD)] | No adjustment, includes sleep, includes suspend |
 | Illumos | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Illumos)] | ? |
