@@ -148,7 +148,7 @@ The implementation is based on the current `Crystal::Time.monotonic`, like
 
 | Platform | System call |
 |-|-|
-| Darwin | `mach_absolute_time` |
+| Darwin | `mach_absolute_time` (equivalent to [`clock_gettime(CLOCK_UPTIME_RAW)`][clock_gettime (darwin)]) |
 | Other Unix | `clock_gettime(CLOCK_MONOTONIC)` |
 | Windows | `QueryPerformanceCounter` |
 
@@ -157,7 +157,7 @@ while the system is suspended, some changes to the underlying clock are necessar
 
 | Platform | System call | Properties |
 |-|-|-|
-| Darwin | [`clock_gettime(CLOCK_UPTIME_RAW)`] | No adjustment, includes sleep, includes suspend? |
+| Darwin | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (darwin)] | No adjustment, includes sleep, includes suspend? |
 | FreeBSD| [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
 | Dragonfly | [`clock_gettime(CLOCK_MONOTONIC_FAST)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend, accurate to one timer tick |
 | Linux | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (Linux)] | Slewed, includes sleep, includes suspend |
@@ -167,7 +167,7 @@ while the system is suspended, some changes to the underlying clock are necessar
 | Illumos | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Illumos)] | ? |
 | Windows | [`QueryPerformanceCounter`] | No adjustment, includes sleep, includes suspend? |
 
-[`clock_gettime(CLOCK_UPTIME_RAW)`]: https://keith.github.io/xcode-man-pages/clock_gettime.3.html
+[clock_gettime (darwin)]: https://keith.github.io/xcode-man-pages/clock_gettime.3.html
 [clock_gettime (FreeBSD)]: https://man.freebsd.org/cgi/man.cgi?query=clock_gettime
 [clock_gettime (Dragonfly)]: https://man.bsd.lv/DragonFly-6.0.1/clock_gettime.2
 [clock_gettime (Linux)]: https://www.man7.org/linux/man-pages/man2/clock_gettime.2.html
