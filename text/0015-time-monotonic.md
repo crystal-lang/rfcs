@@ -157,7 +157,7 @@ while the system is suspended, some changes to the underlying clock are necessar
 
 | Platform | System call | Properties |
 |-|-|-|
-| Darwin | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (darwin)] | No adjustment, includes sleep, includes suspend? |
+| Darwin | [`clock_gettime(CLOCK_MONOTONIC_RAW)`][clock_gettime (darwin)] | No adjustment, includes sleep, includes suspend? |
 | FreeBSD| [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend |
 | Dragonfly | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend |
 | Linux | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (Linux)] | Slewed, includes sleep, includes suspend |
