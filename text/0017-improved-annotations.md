@@ -58,13 +58,18 @@ These types can then be used as you would an annotation defined via the `annotat
 
 ```crystal
 class User
-  @[NotBlank]
+  @[NotBlank(allow_nil: true)]
   property name : String = "Jim"
 end
 ```
 
 The compiler validates arguments provided to the annotation based on the constructor(s) of the class-based annotation.
 E.g. `@[NotBlank(allow_nil: "foo")]` or `@[NotBlank("foo")]` would result in a compile time error like `@[NotBlank] parameter 'allow_nil' expects Bool, not String` that is pointing at the invalid arg.
+Class-based annotations's values may still be accessed at compile time, either via position or name.
+
+Unlike existing annotations, accessing a value that wasn't explicitly provided will return the constructor parameter's default value if one exists.
+For example, given `@[NotBlank]` with no arguments: `ann["allow_nil"]` returns `false` and `ann["message"]` returns `"This value should not be blank."`.
+Positional access works the same way: `ann[0]` and `ann[1]` return the respective defaults.
 
 Class-based annotations may be applied to any language construct that accepts annotations by default.
 Unlike previous existing annotations however, class-based annotations may only applied once to the same item.
@@ -75,8 +80,8 @@ Applying the same annotation more than once will result in a compile time error.
 One of the benefits of the `@[Annotation]` annotation, is it gives a place to add additional metadata to the annotation itself.
 To start, it'll allow the following fields, but allows for future expansion:
 
-- `repeatable : Bool` - to allow an annotation to be applied multiple times to the same item, defaulting to `false`
-- `targets : Array(String)` - to control what targets this annotation can be applied to ("method", "property", "class", "parameter"), defaulting to any target
+- `repeatable` - When `true`, allows the annotation to be applied multiple times to the same item. Defaults to `false`.
+- `targets` - An array of strings restricting which constructs this annotation can be applied to. Valid values: "class", "method", "property", "parameter". Defaults to allowing all targets.
 
 ## Inheritance
 
@@ -86,8 +91,8 @@ If a child type inherits from a type that _is_ an annotation, the child type doe
 
 The `#annotations` method returns annotations matching the provided type.
 The provided type doesn't have to be a class-based annotation itself; but instead could be an non-annotation abstract parent type, or even a module.
-A new optional `is_a` parameter (default `false`) expands the search to include annotations whose types inherit from or include the provided type.
-No error is raised if there are no annotations of the provided type to allow for forward-compatibility if one were to be implemented in the future.
+A new optional `is_a` parameter (default `false`) expands the search to include class-based annotations whose types inherit from or include the provided type.
+This enables polymorphic annotation queries—for example, finding all `Constraint` subclass annotations with `@type.annotations(Constraint, is_a: true)`.
 
 The `#annotation` method remains unchanged and _only_ accepts existing annotations, or a class-based annotation.
 
