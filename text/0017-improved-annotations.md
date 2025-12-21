@@ -43,6 +43,8 @@ end
 class NotBlank < Constraint
   getter? allow_nil : Bool
 
+  macro annotated(allow_nil : BoolLiteral, message : StringLiteral); end
+
   def initialize(
     @allow_nil : Bool = false,
     message : String = "This value should not be blank.",
@@ -63,10 +65,17 @@ class User
 end
 ```
 
-The compiler validates arguments provided to the annotation based on the constructor(s) of the class-based annotation.
+Class-based annotations may have one or more `macro annotated` macros defined within it.
+These macros are used to define the various overloads that can be used to "construct" an annotation.
+If the arguments, both positional and named, do not match any of the overloads, a compile time error will be raised.
 E.g. `@[NotBlank(allow_nil: "foo")]` or `@[NotBlank("foo")]` would result in a compile time error like `@[NotBlank] parameter 'allow_nil' expects Bool, not String` that is pointing at the invalid arg.
-Class-based annotations's values may still be accessed at compile time, either via position or name.
+Constructors of this type are expected to use `Crystal::Macros::*` based typed, such as `Def` or `StringLiteral`, not runtime/stdlib types.
 
+If a class-based annotations does _not_ have any `macro annotated` macros, it'll fall back on runtime constructors (`initialize` or `self.new` overloads), with the same behavior.
+If the annotation _does_ have at least one `macro annotated`, then they will be used and will _not_ fallback on runtime constructors.
+A class-based annotation may be setup to accept any argument like existing annotations via `macro annotated(*args, **kwargs); end`.
+
+Class-based annotations's values may still be accessed at compile time, either via position or name.
 Unlike existing annotations, accessing a value that wasn't explicitly provided will return the constructor parameter's default value if one exists.
 For example, given `@[NotBlank]` with no arguments: `ann["allow_nil"]` returns `false` and `ann["message"]` returns `"This value should not be blank."`.
 Positional access works the same way: `ann[0]` and `ann[1]` return the respective defaults.
@@ -100,7 +109,7 @@ The `#annotation` method remains unchanged and _only_ accepts existing annotatio
 
 Types that have `@[Annotation]` applied to them do not have any of their runtime behavior altered.
 As such, it's still possible to manually instantiate them as you would a normal class/struct.
-There is a new `#new_instance` annotation macro method that generates an instantiation of the class-based annotation at runtime, passing the named and positional arguments within the annotation to the type's `.new` constructor.
+There is a new `#new_instance` annotation macro method that generates an instantiation of the class-based annotation at runtime, passing the named and positional arguments within the annotation to the type's runtime `.new` constructor.
 
 ```crystal
 {% for ann in @type.instance_vars.first.annotations(Constraint, is_a: true) %}
@@ -109,6 +118,8 @@ There is a new `#new_instance` annotation macro method that generates an instant
   # same as if you did like `NotBlank.new(message: "My Custom Message")`
 {% end %}
 ```
+
+If a type defines both runtime constructor(s) and `macro annotated` macro(s), and the latter is not compatible with at least one of the runtime constructors, then `#new_instance` will not work.
 
 ## Existing Annotations
 
@@ -141,14 +152,18 @@ record Bar
 Within the top level visitor we check if a type has this annotation, and if so, parse any metadata from it, then remove it from the list of annotations that type has.
 A `ClassDef` is denoted to be an annotation via new `property? annotation : Bool = false` property.
 Annotation metadata is stored as a new `property : AnnotationMetadata? = nil` instance on `ClassDef`.
+The matched "constructor" is also stored on the Annotation node via a `matched_overload : Def | Macro | Nil` property
 This file is also where we reject applying a `@[Annotation]` to un-supported types (`module`, `lib`, ...).
+
+`macro annotated` overloads allow a class-based annotation to be de-coupled from the runtime type's constructors.
+The body of these macros are ignored as they are currently only used for type validation.
+But falling back on the runtime constructors allows for a better UX by avoiding having to duplicate the constructor(s).
 
 A new `alias AnnotationKey = AnnotationType | ClassType` alias was added that `Annotatable` now uses to support class-based annotations.
 The `add_annotation` has been updated to include a new optional `target` parameter that represents the target the annotation is being added to.
 Class-based annotations's metadata is also validated here as it's central to all types that can be annotated.
 
-Light validation happens in the semantic visitor by looking up the available constructors of the type and seeing if the related arg is compatible with any overload.
-As of now it does _not_ fully validate things meaning if you have two separate overloads that require unique parameters for each, if you provide one annotation argument from each overload, it would be okay with that. It can handle runtime validation if you ever were to instantiate a runtime instance of that annotation however.
+Light validation happens in the semantic visitor by looking up the available constructors of the type and seeing if the provided args are compatible with any of them.
 
 AST literal nodes (`NumberLiteral`, `StringLiteral`, etc.) gain `#runtime_type` to avoid having a big mapping within the visitor itself.
 
@@ -209,8 +224,9 @@ It's honestly very well designed and fits quite well into Crystal.
 # Unresolved questions
 
 - Nailing down the exact semantics, esp related to inheritance
+- Exact naming/semantics of `macro annotated`
 
 # Future possibilities
 
-- Ability to define a new `macro annotated` macro into a class-based annotation that is invoked when that annotation is applied, and would allow setting/mutating the args provided to the annotation
+- Improve `macro annotated` to run its body.
 - More locations that annotation's could be used
