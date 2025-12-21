@@ -158,6 +158,7 @@ This file is also where we reject applying a `@[Annotation]` to un-supported typ
 `macro annotated` overloads allow a class-based annotation to be de-coupled from the runtime type's constructors.
 The body of these macros are ignored as they are currently only used for type validation.
 But falling back on the runtime constructors allows for a better UX by avoiding having to duplicate the constructor(s).
+Supporting this macro required the ability to add type restrictions on macros, which is scoped to `macro annotated` only.
 
 A new `alias AnnotationKey = AnnotationType | ClassType` alias was added that `Annotatable` now uses to support class-based annotations.
 The `add_annotation` has been updated to include a new optional `target` parameter that represents the target the annotation is being added to.
