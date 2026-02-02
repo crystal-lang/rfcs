@@ -79,8 +79,9 @@ through a wrapper shell script, shell plugin ([direnv]), the `--env-file`
 argument to docker and podman, ... or develop alternatives to not depend on
 `ENV` only.
 
-> [!NOTE] We can't recommend enough a configuration library such as [totem] to
-> revisit and centralize your application's settings.
+> [!NOTE]
+> We can't recommend enough a configuration library such as [totem] to revisit
+> and centralize your application's settings.
 
 [direnv]: https://direnv.net/
 [totem]: https://shardbox.org/shards/totem
