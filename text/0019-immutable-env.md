@@ -2,8 +2,8 @@
 Feature Name: immutable_env
 Start Date: 2026-01-19
 RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000"
-Issue: "https://github.com/crystal-lang/crystal/issues/16567"
-Proof of Concept: "https://github.com/crystal-lang/crystal/issues/16449"
+Issue: "https://github.com/crystal-lang/crystal/issues/16449"
+Proof of Concept: "https://github.com/crystal-lang/crystal/pull/16567"
 ---
 
 # Summary
