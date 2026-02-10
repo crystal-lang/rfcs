@@ -48,8 +48,9 @@ We expect the impact to be invisible to most programs:
   ```
 
 > [!NOTE]
-> We highly recommend to always use the `env` and `clear_env` arguments
-> explicitly, regardless of this RFC!
+> We highly recommend to always use the `env` (and `clear_env`) arguments
+> explicitly when the environment must be customized for the child process,
+> regardless of this RFC!
 
 Still, a number of programs are gonna be affected because they mutate `ENV`,
 including the Crystal's spec suites! Here are the most common cases we
@@ -129,6 +130,10 @@ Developers are attached to loading `.env` at runtime into `ENV` and then to
 configure their application by reading from `ENV`. The current RFC breaks that
 scenario, or makes it much more complex
 
+Testing `ENV` itself in the stdlib spec suite is challenging. Maybe
+we could compile an additional program (once), then each test would
+call it with a custom environment and a list of operations to execute
+and assert the output.
 
 # Rationale and alternatives
 
