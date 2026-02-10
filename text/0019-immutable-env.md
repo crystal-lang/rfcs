@@ -67,10 +67,6 @@ identified:
   methods, though sometimes it might no be easy (e.g. tweak `PATH` to test
   sub-processes).
 
-- Testing `ENV` itself is challenging. Maybe we could compile an additional
-  program (once), then each test would call it with a custom environment and a
-  list of operations to execute and assert the output.
-
 After running a survey, the main case for mutating `ENV` is to load a `.env`
 file (or equivalent), have it mutate `ENV` and then have anything that takes
 environment variables just use it. This behavior will no longer be possible.
