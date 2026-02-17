@@ -1,7 +1,7 @@
 ---
 Feature Name: target_annotation
 Start Date: 2026-02-17
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/0020"
 Issue: "https://github.com/crystal-lang/crystal/issues/16570"
 Implementation PR: "https://github.com/crystal-lang/crystal/pull/16571"
 ---
