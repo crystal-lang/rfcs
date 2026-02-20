@@ -95,6 +95,9 @@ When a method has been compiled with a feature and that feature is not supported
 
 Method with `@[Target]` feature annotation may not be inlined into an incompatible context.
 
+If LLVM decides to inline a call inside a method annotated with @[Target] then LLVM
+will be allowed to use the specified CPU features to optimize the inlined code.
+
 
 ## Drawbacks
 
@@ -125,7 +128,6 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 - Should there be warnings and should they be be suppressible or configurable?
 - Do we really need to guard the `@[Target]` def with arch flags or only the callsites?
 - How can we provide helpers for  runtime feature detection?
-- How does calling nested functions work?
 - Clang/gcc style automatic static/dynamic dispatch could be useful for Crystal? (https://github.com/crystal-lang/crystal/issues/16570#issuecomment-3760342769)
 - `debug` and `optimize` seem a bit distance from CPU features, so maybe they should be excluded from this proposal (defer to future discussion)
 
