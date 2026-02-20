@@ -47,6 +47,9 @@ else
 end
 ```
 
+> [!CAUTION]
+> | This is an unsafe feature and programs may crash with an invalid instruction error at runtime if CPU feature checks are inaccurate.
+
 
 ## Reference-level explanation
 
