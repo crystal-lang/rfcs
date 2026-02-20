@@ -130,12 +130,13 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 
 - Should there be warnings and should they be be suppressible or configurable?
 - Do we really need to guard the `@[Target]` def with arch flags or only the callsites?
-- How can we provide helpers for  runtime feature detection?
-- Clang/gcc style automatic static/dynamic dispatch could be useful for Crystal? (https://github.com/crystal-lang/crystal/issues/16570#issuecomment-3760342769)
-- `debug` and `optimize` seem a bit distance from CPU features, so maybe they should be excluded from this proposal (defer to future discussion)
 
 
 ## Future possibilities
+
+- Helpers for runtime feature detection. Example: https://github.com/spider-gazelle/simd/blob/main/src/simd/detect.cr?rgh-link-date=2026-02-18T03%3A00%3A47Z
+- Clang/gcc style automatic static/dynamic dispatch could be useful for Crystal? (https://github.com/crystal-lang/crystal/issues/16570#issuecomment-3760342769)
+- `debug` and `optimize` seem a bit distance from CPU features, so maybe they should be excluded from this proposal (defer to future discussion)
 
 [target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#r-attributes.codegen.target_feature
 [zig #1018]: https://github.com/ziglang/zig/issues/1018
