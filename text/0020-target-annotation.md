@@ -64,7 +64,7 @@ It supports these parameters:
   def foo_avx2
   end
   ```
-- `cpu`: Select a specific CPU type.
+- `cpu`: Select a specific CPU model.
   ```cr
   @[Target(cpu: "apple-m1")]
   def foo_m1
