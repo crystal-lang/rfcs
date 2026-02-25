@@ -76,7 +76,7 @@ Further extensions can widen the scope of the event loop.
 
 The new `EventLoop` interface consists of individual module interfaces which
 defines operations on the event loop related to a specific concept.
-The `run` and `interrupt` methods are shown for completes, but they are part
+The `run` and `interrupt` methods are shown for completeness, but they are part
 of [RFC 0002](https://github.com/crystal-lang/rfcs/pull/2) ([#14568](https://github.com/crystal-lang/crystal/pull/14568)).
 
 ```cr
