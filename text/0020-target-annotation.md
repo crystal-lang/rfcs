@@ -34,16 +34,18 @@ A runtime check selects the appropriate implementation.
 
 ```cr
 @[Target(features: "+sve,+sve2")]
-def foo_sve2
+private def foo_sve2
 end
 
-def foo_portable
+private def foo_portable
 end
 
-if cpu_supports_sve?
-  foo_sve2
-else
-  foo_portable
+def foo
+  if cpu_supports_sve?
+    foo_sve2
+  else
+    foo_portable
+  end
 end
 ```
 
