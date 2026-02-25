@@ -6,12 +6,12 @@ Issue: https://forum.crystal-lang.org/t/ambiguous-use-of-time-span-for-duration-
 Implementation PR: "https://github.com/crystal-lang/crystal/pull/16490"
 ---
 
-# Summary
+## Summary
 
 Introduce a new type to represent instants on the monotonic timeline.
 This replaces the current [`Time.monotonic`] which returns [`Time::Span`].
 
-# Motivation
+## Motivation
 
 Currently, `Time.monotonic` returns a `Time::Span` to represent _instant_.
 But `Time::Span` represents a _duration_, not an _instant_. This overloading
@@ -29,7 +29,7 @@ The expected outcome is a clearer and safer API where:
 The confusion is aided by the fact that [`Time.measure(&)`] also returns
 `Time::Span` but there it actually represents a duration.
 
-# Guide-level explanation
+## Guide-level explanation
 
 With this proposal, Crystal programmers will use a dedicated type for monotonic time readings:
 
@@ -37,7 +37,7 @@ Crystal 1.17: Ambiguous
 
 ```crystal
 start = Time.monotonic # : Time::Span
-# do something
+## do something
 elapsed = Time.monotonic - start # : Time::Span
 ```
 
@@ -45,7 +45,7 @@ This RFC: Clearer
 
 ```crystal
 start = Time.instant # : Time::Instant
-# do something
+## do something
 elapsed = Time.instant - start # : Time::Span
 ```
 
@@ -53,7 +53,7 @@ The key distinction is that `Instant` is a point in time on the monotonic
 clock, while `Span` is a duration. This separation makes code easier to reason
 about and reduces the risk of type misuse.
 
-## Transition
+### Transition
 
 `Time.monotonic` gets deprecated, but continues to function. We recommend
 transitioning to `Time.instant`.
@@ -64,7 +64,7 @@ This should generally work fine because the usable API is identical. If the type
 `Time::Span` is encoded in a type restriction (e.g. ivar or method signature),
 it needs updating as well. This is not trivial to automate.
 
-# Reference-level explanation
+## Reference-level explanation
 
 We introduce a new type that represents a reading of a monotonic nondecreasing
 clock for the purpose of measuring elapsed time or timing an event in the future.
@@ -99,7 +99,7 @@ retaining the same logic.
 Existing uses should continue to work as before, despite the type change.
 
 ```cr
-# Returns the current reading of the monotonic clock.
+## Returns the current reading of the monotonic clock.
 def Time.instant : Time::Instant
 end
 
@@ -142,7 +142,7 @@ want to introduce some adjustments for better aligned semantics.
 [`Time.measure(&)`] stays unaffected except updating the implementation to the
 new API.
 
-## Clock Implementation
+### Clock Implementation
 
 The implementation is based on the current `Crystal::Time.monotonic`, like
 `Time.monotonic`. It currently uses the following system calls:
@@ -178,18 +178,18 @@ while the system is suspended, some changes to the underlying clock are necessar
 [clock_gettime (Illumos)]: https://smartos.org/man/3C/clock_gettime
 [`QueryPerformanceCounter`]: https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancecounter
 
-## Glossary
+### Glossary
 
 - **monotonic:** Strictly non-decreasing: any clock reading is greater or equal to any previous reading. _Effectively this means the clock is not affected by manual changes to the system clock or mechanisms like NTP sync. A monotonic clock may or may not advance while the system is suspended._
 - **strictly increasing:** Any clock reading is greater than any previous reading. _The clocks exposed by the operating system usually cannot guarantee this: there is a chance that consecutive calls may return the same reading._
 - **steady:** Clock ticks at a constant rate, i.e. the length of a unit of time is fixed and there are no discontinuous jumps. _Monotonic clocks are usually steady (at least as far as hardware imperfection allows). Strict steadiness is not guaranteed. The Linux kernel for example may adjust the `CLOCK_MONOTONIC` tick rate to ensure clock discipline. This is usually a gradual slewing, but might be more noticeable jumps for large corrections._
 - **calendar time:** A clock tracking date + time of day. It is usually synced to civil time via NTP or manual setting and can jump arbitrarily for clock adjustments. _That makes it unsuitable for reliably measuring elapsed time._
 
-# Drawbacks
+## Drawbacks
 
 - This introduces a new type, increasing API surface area.
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 Keeping `Time.monotonic` returning a `Span` risks continued ambiguity.
 
@@ -198,7 +198,7 @@ Not doing this change means continuously conflating two distinct concepts, poten
 This could be implemented as a shard outside the standard library. But it needs
 to be in stdlib to successfully replace `Time.monotonic`.
 
-# Prior art
+## Prior art
 
 Other standard libraries distinguish between _monotonic instants_ and
 _durations_:
@@ -213,7 +213,7 @@ _durations_:
   But the overall picture should still be accurate.
   Particular interesting is the [classification of clock sources].
 
-# Unresolved questions
+## Unresolved questions
 
 - The `#-` method for calculating a duration between two instants is simple, but
   can lead to mistakes based on the order of operands. It's also susceptiple to
@@ -225,7 +225,7 @@ _durations_:
   `#elapsed` would be convenient alternative that also alleviates these issues,
   but doesn't cover all use cases.
 
-# Future possibilities
+## Future possibilities
 
 - `#elapsed` would allow extensions for different clocks. Calling `#elapsed`
   would always use the same clock as `self`.

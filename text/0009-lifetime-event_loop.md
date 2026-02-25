@@ -5,14 +5,14 @@ RFC PR: "https://github.com/crystal-lang/rfcs/pull/9"
 Issue: "https://github.com/crystal-lang/crystal/pull/14996"
 ---
 
-# Summary
+## Summary
 
 Integrate the Crystal event loop directly with system selectors,
 [`epoll`](https://linux.die.net/man/7/epoll) (Linux, Android) and
 [`kqueue`](https://man.freebsd.org/cgi/man.cgi?kqueue) (BSDs, macOS) instead of
 going through [`libevent`](https://libevent.org/).
 
-# Motivation
+## Motivation
 
 Direct integration with the system selectors enables a more performant
 implementation thanks to a design change. Going from ad-hoc event subscriptions
@@ -25,7 +25,7 @@ programs.
 This also prepares the event loop foundation for implementing execution contexts
 from [RFC #0002](https://github.com/crystal-lang/rfcs/pull/2).
 
-# Guide-level explanation
+## Guide-level explanation
 
 <!--
 Explain the proposal as if it was already included in the language and you were
@@ -61,7 +61,7 @@ The new event loop driver is enabled automatically on supported targets (see
 unsupported targets and can be opted-in with the compile-time flag
 `-Deventloop=libevent`.
 
-### Design
+#### Design
 
 The logic of the event loop doesn't change much from the one based on
 `libevent`:
@@ -92,7 +92,7 @@ multiple fibers.
 > performance improvement. Real applications would see less improvements,
 > though.
 
-### Multi-Threading
+#### Multi-Threading
 
 > [!CAUTION]
 >
@@ -125,7 +125,7 @@ waiting for connections on a server socket. This shall be mitigated with
 execution contexts where an event loop instance is shared per context — just
 don't share a `fd` between contexts.
 
-### Availability
+#### Availability
 
 The lifetime event loop driver is supported on:
 
@@ -147,7 +147,7 @@ The event loop drivers on Windows and WebAssembly (WASI) are not affected by
 this change. The event loop driver for Windows already integrates directly with
 the system selector (`IOCP`).
 
-## Terminology
+### Terminology
 
 - **Event loop**: an abstraction to wait on specific events, such as timers
   (e.g. wait until a certain amount of time has passed) or IO (e.g. wait for an
@@ -170,7 +170,7 @@ the system selector (`IOCP`).
   Crystal), unlike threads that are scheduled by the operating system (outside
   of the accessibility of the program).
 
-# Reference-level explanation
+## Reference-level explanation
 
 <!--
 This is the technical portion of the RFC. Explain the design in sufficient
@@ -206,7 +206,7 @@ that have sub-millisecond precision (except for DragonFlyBSD), and that we can
 update in parallel when the next expiring timer has changed, using a mutex to
 prevent parallel races.
 
-## Components
+### Components
 
 Each syscall is abstracted in its own little struct: `Crystal::System::Epoll`,
 `Crystal::System::TimerFD`, etc.
@@ -225,7 +225,7 @@ Each syscall is abstracted in its own little struct: `Crystal::System::Epoll`,
   advantage that the OS kernel guarantees a unique `fd` number and always reuses
   numbers of closed `fd`, only adding more numbers when needed.
 
-## Poll Descriptors
+### Poll Descriptors
 
 To avoid keeping pointers to the IO object that could prevent the GC from
 collecting lost IO objects, this proposal introduces _Poll Descriptor_ objects
@@ -275,7 +275,7 @@ execution context.
 
 If this ever proves to be an issue, we can think of solutions. For example migrating timeouts along, triaging external fibers from local ones, and more, of course at the expense of some performance.
 
-# Drawbacks
+## Drawbacks
 
 <!--
 Why should we *not* do this?
@@ -284,7 +284,7 @@ Why should we *not* do this?
 - There's more code to maintain: Instead of only the `libevent` driver we now
   have additional ones to care about.
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 <!--
 - Why is this design the best in the space of possible designs?
@@ -296,7 +296,7 @@ Why should we *not* do this?
   and maintain?
 -->
 
-# Prior art
+## Prior art
 
 <!--
 Discuss prior art, both the good and the bad, in relation to this proposal. A
@@ -322,7 +322,7 @@ sometimes intentionally diverges from common language features.
 
 Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design, with the difference that Go only has a single event loop instance per process.
 
-# Unresolved questions
+## Unresolved questions
 
 <!--
 - What parts of the design do you expect to resolve through the RFC process
@@ -334,7 +334,7 @@ Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design,
   RFC?
 -->
 
-## Timers and timeouts
+### Timers and timeouts
 
 We're missing a proper data structure to store timers and timeouts. It must be
 thread safe and efficient. Ideas are a minheap (4-heap) or a skiplist. Timers
@@ -343,7 +343,7 @@ and timeouts may need to be handled separately.
 This issue is blocking. An inefficient data structure wrecks performance for
 timers and timeouts.
 
-## Performance issues on BSDs
+### Performance issues on BSDs
 
 The `kqueue` driver is disabled on DragonFly BSD, OpenBSD and NetBSD due to
 performance regressions.
@@ -364,7 +364,7 @@ The `kqueue` driver works fine on FreeBSD and Darwin.
 These issues are non-blocking. We can keep using `libevent` on these operating
 systems until resolved.
 
-# Future possibilities
+## Future possibilities
 
 <!--
 Think about what the natural extension and evolution of your proposal would be
