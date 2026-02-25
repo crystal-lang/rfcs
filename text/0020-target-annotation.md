@@ -74,12 +74,28 @@ It supports these parameters:
   ```
 
 Feature and CPU selections only accept values valid for the current target platform architecture.
-That means their definition may typically need guard clauses.
+
+It is a semantic error to call a method with a feature requirement that is invalid for the current target architecture.
+So calls typically require macro guard clauses on top of runtime feature tests.
+
+```cr
+@[Target(features: "+sve")]
+fun foo_sve
+end
+
+{% if flag?(:aarch64) %}
+  if cpu_supports_sve?
+    foo_sve
+  end
+{% end %}
+```
+
+`fun` definitions typically require guard clauses:
 
 ```cr
 {% if flag?(:aarch64) %}
-  @[Target(features: "+avx2")]
-  def foo_avx2
+  @[Target(features: "+sve")]
+  fun foo_sve
   end
 {% end %}
 ```
