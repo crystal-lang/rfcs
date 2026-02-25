@@ -27,7 +27,7 @@ You thus need to tell LLVM to enable CPU features scoped to specific functions o
 
 ## Guide-level explanation
 
-With this feature, CPU features can be scoped to specific function only.
+With this feature, CPU features can be scoped to a specific function.
 
 For example, a generic baseline implementation as fallback, plus one or more optimized implementations using specialized instructions.
 A runtime check selects the appropriate implementation.
@@ -48,12 +48,12 @@ end
 ```
 
 > [!CAUTION]
-> | This is an unsafe feature and programs may crash with an invalid instruction error at runtime if CPU feature checks are inaccurate.
+> This is an unsafe feature. Misuse can lead to immediate process termination via illegal instruction faults.
 
 
 ## Reference-level explanation
 
-The `@[Target]` annotation can be applied to a `def` of `fun` definition to enable
+The `@[Target]` annotation can be applied to a `def` or `fun` definition to enable
 specific code generation features.
 
 It supports these parameters:
@@ -96,7 +96,7 @@ That means their definition may typically need guard clauses.
 
 When a method has been compiled with a feature and that feature is not supported on the platform at runtime, calling this method is undefined behaviour.
 
-Method with `@[Target]` feature annotation may not be inlined into an incompatible context.
+A method compiled with additional features must never be inlined into a context without those features. LLVM should enforce that.
 
 If LLVM decides to inline a call inside a method annotated with @[Target] then LLVM
 will be allowed to use the specified CPU features to optimize the inlined code.
@@ -136,7 +136,6 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 
 - Helpers for runtime feature detection. Example: https://github.com/spider-gazelle/simd/blob/main/src/simd/detect.cr?rgh-link-date=2026-02-18T03%3A00%3A47Z
 - Clang/gcc style automatic static/dynamic dispatch could be useful for Crystal? (https://github.com/crystal-lang/crystal/issues/16570#issuecomment-3760342769)
-- `debug` and `optimize` seem a bit distance from CPU features, so maybe they should be excluded from this proposal (defer to future discussion)
 
 [target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#r-attributes.codegen.target_feature
 [zig #1018]: https://github.com/ziglang/zig/issues/1018
