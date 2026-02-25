@@ -72,18 +72,6 @@ It supports these parameters:
   def foo_m1
   end
   ```
-- `debug`: Disable debug metadata.
-  ```cr
-  @[Target(debug: false)]
-  def foo_debug
-  end
-  ```
-- `optimize`: Select optimization strategy.
-  ```cr
-  @[Target(optimize: :size)]
-  def foo_size
-  end
-  ```
 
 Feature and CPU selections only accept values valid for the current target platform architecture.
 That means their definition may typically need guard clauses.
