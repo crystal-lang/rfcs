@@ -140,8 +140,12 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 
 ## Future possibilities
 
-- Helpers for runtime feature detection. Example: https://github.com/spider-gazelle/simd/blob/main/src/simd/detect.cr?rgh-link-date=2026-02-18T03%3A00%3A47Z
+- Helpers for runtime feature detection. Examples:
+  - [Spider Gazelle SIMD detection]
+  - Rust's [`is_x86_feature_detected`] & Co
 - Clang/gcc style automatic static/dynamic dispatch could be useful for Crystal? (https://github.com/crystal-lang/crystal/issues/16570#issuecomment-3760342769)
 
 [target_feature]: https://doc.rust-lang.org/reference/attributes/codegen.html#r-attributes.codegen.target_feature
 [zig #1018]: https://github.com/ziglang/zig/issues/1018
+[`is_x86_feature_detected`]: https://doc.rust-lang.org/std/macro.is_x86_feature_detected.html
+[Spider Gazelle SIMD detection]: https://github.com/spider-gazelle/simd/blob/main/src/simd/detect.cr?rgh-link-date=2026-02-18T03%3A00%3A47Z
