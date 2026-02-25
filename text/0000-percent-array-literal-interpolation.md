@@ -1,7 +1,7 @@
 ---
 Feature Name: `pecent-array-literal-interpolation`
 Start Date: 2026-02-25
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/21"
 Issue:
 ---
 
