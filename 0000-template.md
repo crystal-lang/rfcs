@@ -19,7 +19,7 @@ Explain the proposal as if it was already included in the language and you were 
 
 - Introducing new named concepts.
 - Explaining the feature largely in terms of examples.
-- Explaining how Crystal programmers should *think* about the feature, and how it should impact the way they use Crystal. It should explain the impact as concretely as possible.
+- Explaining how Crystal programmers should _think_ about the feature, and how it should impact the way they use Crystal. It should explain the impact as concretely as possible.
 - If applicable, provide sample error messages, deprecation warnings, or migration guidance.
 - If applicable, describe the differences between teaching this to existing Crystal programmers and new Crystal programmers.
 - If applicable, discuss how this impacts the ability to read, understand, and maintain Crystal code. Code is read and modified far more often than written; will the proposed feature make code easier to maintain?
@@ -38,7 +38,7 @@ The section should return to the examples given in the previous section, and exp
 
 # Drawbacks
 
-Why should we *not* do this?
+Why should we _not_ do this?
 
 # Rationale and alternatives
 

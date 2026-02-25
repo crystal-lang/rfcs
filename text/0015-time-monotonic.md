@@ -13,13 +13,14 @@ This replaces the current [`Time.monotonic`] which returns [`Time::Span`].
 
 # Motivation
 
-Currently, `Time.monotonic` returns a `Time::Span` to represent *instant*.
-But `Time::Span` represents a *duration*, not an *instant*. This overloading
+Currently, `Time.monotonic` returns a `Time::Span` to represent _instant_.
+But `Time::Span` represents a _duration_, not an _instant_. This overloading
 creates semantic ambiguity: `Time::Span` can either mean "an elapsed
 duration" or "an absolute monotonic reading". This duplication can lead to
 confusion and accidental misuse.
 
 The expected outcome is a clearer and safer API where:
+
 - `Time::Instant` represents a single point on the monotonic timeline.
 - `Time::Span` continues to represent a duration.
 - Subtracting two `Instant` instances yields a `Span`.
@@ -179,10 +180,10 @@ while the system is suspended, some changes to the underlying clock are necessar
 
 ## Glossary
 
-- **monotonic:** Strictly non-decreasing: any clock reading is greater or equal to any previous reading. *Effectively this means the clock is not affected by manual changes to the system clock or mechanisms like NTP sync. A monotonic clock may or may not advance while the system is suspended.*
-- **strictly increasing:** Any clock reading is greater than any previous reading. *The clocks exposed by the operating system usually cannot guarantee this: there is a chance that consecutive calls may return the same reading.*
-- **steady:** Clock ticks at a constant rate, i.e. the length of a unit of time is fixed and there are no discontinuous jumps. *Monotonic clocks are usually steady (at least as far as hardware imperfection allows). Strict steadiness is not guaranteed. The Linux kernel for example may adjust the `CLOCK_MONOTONIC` tick rate to ensure clock discipline. This is usually a gradual slewing, but might be more noticeable jumps for large corrections.*
-- **calendar time:** A clock tracking date + time of day. It is usually synced to civil time via NTP or manual setting and can jump arbitrarily for clock adjustments. *That makes it unsuitable for reliably measuring elapsed time.*
+- **monotonic:** Strictly non-decreasing: any clock reading is greater or equal to any previous reading. _Effectively this means the clock is not affected by manual changes to the system clock or mechanisms like NTP sync. A monotonic clock may or may not advance while the system is suspended._
+- **strictly increasing:** Any clock reading is greater than any previous reading. _The clocks exposed by the operating system usually cannot guarantee this: there is a chance that consecutive calls may return the same reading._
+- **steady:** Clock ticks at a constant rate, i.e. the length of a unit of time is fixed and there are no discontinuous jumps. _Monotonic clocks are usually steady (at least as far as hardware imperfection allows). Strict steadiness is not guaranteed. The Linux kernel for example may adjust the `CLOCK_MONOTONIC` tick rate to ensure clock discipline. This is usually a gradual slewing, but might be more noticeable jumps for large corrections._
+- **calendar time:** A clock tracking date + time of day. It is usually synced to civil time via NTP or manual setting and can jump arbitrarily for clock adjustments. _That makes it unsuitable for reliably measuring elapsed time._
 
 # Drawbacks
 
@@ -199,14 +200,14 @@ to be in stdlib to successfully replace `Time.monotonic`.
 
 # Prior art
 
-Other standard libraries distinguish between *monotonic instants* and
-*durations*:
+Other standard libraries distinguish between _monotonic instants_ and
+_durations_:
 
-* **Rust**: [`std::time::Instant`] vs. [`std::time::Duration`]
-* **Swift**: [`DispatchTime`] vs. [`DispatchTimeInterval`]
-* **Zig**: [`std.time.Instant`]
+- **Rust**: [`std::time::Instant`] vs. [`std::time::Duration`]
+- **Swift**: [`DispatchTime`] vs. [`DispatchTimeInterval`]
+- **Zig**: [`std.time.Instant`]
 
-* [PEP-0418] is an informative collection of platform capabilities and how they
+- [PEP-0418] is an informative collection of platform capabilities and how they
   are exposed in the Python API. This is from 2012 and a few things have changed
   since then (`QueryInterruptTime` from Windows 10 is missing, for example).
   But the overall picture should still be accurate.

@@ -33,6 +33,7 @@ This interface is used in the implementation of asynchronous IO and other evente
 Compared to the previous event loop implementation, actions are entirely self-contained instead of scattered between the event loop and the system implementations of `Socket` and `Crystal::System::FileDescriptor`.
 
 For example, the previous, platform-specific implementation of `Socket#unbuffered_read` for Unix systems:
+
 ```cr
 private def unbuffered_read(slice : Bytes) : Int32
   evented_read(slice, "Error reading socket") do
@@ -42,6 +43,7 @@ end
 ```
 
 The new, portable implementation of `Socket#unbuffered_read`:
+
 ```cr
 private def unbuffered_read(slice : Bytes) : Int32
   event_loop.read(self, slice)
@@ -210,11 +212,11 @@ end
 
 Notable differences from the previous API:
 
-* Timeout and resume events are not on the event loop. The scheduler is supposed to handle them directly.
+- Timeout and resume events are not on the event loop. The scheduler is supposed to handle them directly.
   `Crystal::System::Event` gets removed as this was its only use case.
-* The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
-  This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write *all* bytes of the given slice.
-* `Socket` is not part of the core library, so references to its types (e.g. in type restrictions) would not resolve.
+- The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
+  This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write _all_ bytes of the given slice.
+- `Socket` is not part of the core library, so references to its types (e.g. in type restrictions) would not resolve.
   The `EventLoop` interface is split into individual modules and the `Socket` module is always defined, but only filled with abstract defs when `socket.cr` is explicitly required.
 
 # Drawbacks
@@ -268,7 +270,7 @@ Do we require these optional methods to be present in all event loop implementat
 
 # Future possibilities
 
-* Alternative event loop implementations based directly on the system selectors
+- Alternative event loop implementations based directly on the system selectors
   instead of `libevent` ([RFC 0009](https://github.com/crystal-lang/rfcs/pull/9))
 
 ### Type for sizes

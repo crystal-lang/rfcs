@@ -92,7 +92,7 @@ Such a group of fibers will never run in parallel. This can vastly simplify the 
 
 ## Issues
 
-### The round robin dispatcher doesn’t consider busy threads.
+### The round robin dispatcher doesn’t consider busy threads
 
 Crystal pushes new fibers to whatever thread, meaning that we may push fibers to busy threads with a large queue, while there may be available threads, or with smaller / faster queues.
 

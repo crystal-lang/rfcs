@@ -53,12 +53,11 @@ concrete terms.
 
 This new event loop driver builds on top of the event loop refactor from
 [RFC #0007](./0007-event_loop-refactor.md). It plugs right into the runtime and does
-
 not require any changes in user code, even for direct consumers of the
 `Crystal::EventLoop` API.
 
 The new event loop driver is enabled automatically on supported targets (see
-[*Availability*](#availability)). The `libevent` driver serves as a fallback for
+[_Availability_](#availability)). The `libevent` driver serves as a fallback for
 unsupported targets and can be opted-in with the compile-time flag
 `-Deventloop=libevent`.
 
@@ -67,11 +66,11 @@ unsupported targets and can be opted-in with the compile-time flag
 The logic of the event loop doesn't change much from the one based on
 `libevent`:
 
-* We try to execute an operation (e.g. `read`, `write`, `connect`, ...) on
+- We try to execute an operation (e.g. `read`, `write`, `connect`, ...) on
   nonblocking `fd`s
-* If the operation would block (`EAGAIN`) we create an event that references the
+- If the operation would block (`EAGAIN`) we create an event that references the
   operation along with the current fiber
-* We eventually rely on the polling system (`epoll` or `kqueue`) to report when
+- We eventually rely on the polling system (`epoll` or `kqueue`) to report when
   an `fd` is ready, which will dequeue a pending event and resume its associated
   fiber (one at a time).
 
@@ -195,7 +194,7 @@ The event loop implementations don't use the timeout and instead wait forever
 1. Epoll also has a minimum timeout precision of 1ms, but what if the next
    expiring timer is in 10us?
 
-3. In a single threaded context we could set the timeout to the next expiring
+2. In a single threaded context we could set the timeout to the next expiring
    timer; that would work for no MT as well as `preview_mt`, but if we share
    the event loop instance between threads —which will be the case with
    execution contexts— then we have a race condition: another thread can set a
@@ -229,15 +228,15 @@ Each syscall is abstracted in its own little struct: `Crystal::System::Epoll`,
 ## Poll Descriptors
 
 To avoid keeping pointers to the IO object that could prevent the GC from
-collecting lost IO objects, this proposal introduces *Poll Descriptor* objects
+collecting lost IO objects, this proposal introduces _Poll Descriptor_ objects
 (the name comes from Go's netpoll) that keep the list of readers and writers and
 don't point back to the IO object. The GC collecting an IO object is fine: the
-finalizer will close the `fd` and tell the event loop to cleanup the associated *Poll Descriptor* (so we can safely reuse the `fd`).
+finalizer will close the `fd` and tell the event loop to cleanup the associated _Poll Descriptor_ (so we can safely reuse the `fd`).
 
 To avoid pushing raw pointers into the kernel data structures, and to quickly
-retrieve the *Poll Descriptor* from a mere `fd`, but also to avoid programming
-errors that would segfault the program, this propsal introduces a *Generational
-Arena* to store the *Poll Descriptors* (the name is inherited from Go's netpoll)
+retrieve the _Poll Descriptor_ from a mere `fd`, but also to avoid programming
+errors that would segfault the program, this propsal introduces a _Generational
+Arena_ to store the _Poll Descriptors_ (the name is inherited from Go's netpoll)
 so we only store an index into the polling system. Another benefit is that we
 can reuse the existing allocation when a `fd` is reused. If we try to retrieve
 an outdated index (the allocation was freed or reallocated) the arena will raise
@@ -246,6 +245,7 @@ an explicit exception.
 > [!NOTE]
 >
 > The goals of the arena are:
+>
 > - avoid repeated allocations;
 > - avoid polluting the IO object with the PollDescriptor (doesn't exist in
 > other event loops);
@@ -253,7 +253,7 @@ an explicit exception.
 > - safely detect allocation issues instead of segfaults because of raw
 >   pointers.
 
-The *Poll Descriptors* associate a `fd` to an event loop instance, so we can
+The _Poll Descriptors_ associate a `fd` to an event loop instance, so we can
 still have multiple event loops per processes, yet make sure that an `fd` is
 only ever in one event loop. When a `fd` will block on another event loop
 instance, the `fd` will be transferred automatically (i.e. removed from the old
@@ -281,7 +281,7 @@ If this ever proves to be an issue, we can think of solutions. For example migra
 Why should we *not* do this?
 -->
 
-* There's more code to maintain: Instead of only the `libevent` driver we now
+- There's more code to maintain: Instead of only the `libevent` driver we now
   have additional ones to care about.
 
 # Rationale and alternatives
@@ -385,6 +385,6 @@ section on motivation or rationale in this or subsequent RFCs. The section
 merely provides additional information.
 -->
 
-* `aio` for async read/write over regular disk files with `kqueue`
-* Integrate more evented operations such as `signalfd`/`EVFILT_SIGNAL` and
+- `aio` for async read/write over regular disk files with `kqueue`
+- Integrate more evented operations such as `signalfd`/`EVFILT_SIGNAL` and
   `pidfd`/`EVFILT_PROC`.
