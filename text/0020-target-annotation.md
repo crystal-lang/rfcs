@@ -8,7 +8,7 @@ Implementation PR: "https://github.com/crystal-lang/crystal/pull/16571"
 
 ## Summary
 
-Introduces a new `@[Target]` annotation that allows setting codegen options for individual methods.
+Introduces a new `@[TargetFeature]` annotation that allows setting codegen options for individual methods.
 This enables programs to include code paths that use advanced CPU instructions (such as SIMD extensions) and select compatible implementations at runtime.
 
 
@@ -33,7 +33,7 @@ For example, a generic baseline implementation as fallback, plus one or more opt
 A runtime check selects the appropriate implementation.
 
 ```cr
-@[Target(features: "+sve,+sve2")]
+@[TargetFeature("+sve,+sve2")]
 private def foo_sve2
 end
 
@@ -55,20 +55,20 @@ end
 
 ## Reference-level explanation
 
-The `@[Target]` annotation can be applied to a `def` or `fun` definition to enable
+The `@[TargetFeature]` annotation can be applied to a `def` or `fun` definition to enable
 specific code generation features.
 
 It supports these parameters:
 
 - `feature`: Select specific platform architecture features. See https://llvm.org/doxygen/classllvm_1_1SubtargetFeatures.html
   ```cr
-  @[Target(features: "+avx2")]
+  @[TargetFeature("+avx2")]
   def foo_avx2
   end
   ```
 - `cpu`: Select a specific CPU model.
   ```cr
-  @[Target(cpu: "apple-m1")]
+  @[TargetFeature(cpu: "apple-m1")]
   def foo_m1
   end
   ```
@@ -79,7 +79,7 @@ It is a semantic error to call a method with a feature requirement that is inval
 So calls typically require macro guard clauses on top of runtime feature tests.
 
 ```cr
-@[Target(features: "+sve")]
+@[TargetFeature("+sve")]
 fun foo_sve
 end
 
@@ -94,7 +94,7 @@ end
 
 ```cr
 {% if flag?(:aarch64) %}
-  @[Target(features: "+sve")]
+  @[TargetFeature("+sve")]
   fun foo_sve
   end
 {% end %}
@@ -104,7 +104,7 @@ When a method has been compiled with a feature and that feature is not supported
 
 A method compiled with additional features must never be inlined into a context without those features. LLVM should enforce that.
 
-If LLVM decides to inline a call inside a method annotated with @[Target] then LLVM
+If LLVM decides to inline a call inside a method annotated with `@[TargetFeature]`, then LLVM
 will be allowed to use the specified CPU features to optimize the inlined code.
 
 
