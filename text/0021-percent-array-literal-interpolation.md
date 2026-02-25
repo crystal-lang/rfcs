@@ -1,16 +1,15 @@
 ---
-Feature Name: "`percent-array-literal-interpolation`"
+Feature Name: "percent-array-literal-interpolation"
 Start Date: 2026-02-25
 RFC PR: "https://github.com/crystal-lang/rfcs/pull/21"
 Issue:
 ---
 
-# Summary
+## Summary
 
 Add a variant of the existing percent array literal (`%w`) with interpolation support, indicated by an upper-case `%W`.
 
-
-# Motivation
+## Motivation
 
 Creating string arrays with the `%w` literal syntax is convenient, but limited because string values must be static.
 Introducing dynamic values requires mutating the array afterwards which adds more complexity.
@@ -20,8 +19,7 @@ A particular use case is for process command arrays with `Process.run` and simil
 
 [#14773 (comment)]: https://github.com/crystal-lang/crystal/issues/14773#issuecomment-3890019306
 
-
-# Guide-level explanation
+## Guide-level explanation
 
 The percent literal `%W` indicates a literal notation of a string array with individual values separated by whitespace.
 It has the same properties as the lowercase `%w` literal except that it does support interpolation and escape sequences.
@@ -42,8 +40,7 @@ Process.run %W[crystal tool format #{*paths}]
 Process.run ["crystal", "tool", "format", *paths]
 ```
 
-
-# Reference-level explanation
+## Reference-level explanation
 
 The basic properties are identical to `%w`:
 
@@ -71,34 +68,29 @@ An array element can consist of an combination of interpolations and static comp
 Interpolation syntax also supports splat expansion which inserts multiple elements into the array at the respective position.
 Splat interpolation does not support static prefix or suffix strings, i.e. it must be surrounded by whitespace or be anchored at the begin or end of the literal.
 
-```
+```cr
 %W[foo #{*%w[bar baz]} qux] # => ["foo", "bar", "baz", "qux"]
 ```
 
-
-# Drawbacks
+## Drawbacks
 
 Adding slightly more complexity to the syntax. But we're only combining already existing features (array literals, string interpolation and splats) so there are no new concepts.
 
-
-# Rationale and alternatives
+## Rationale and alternatives
 
 - Crystal inherited the percent array literal syntax from Ruby which has exactly this `%W` variant with interpolation support. Adding it to Crystal seems like a logical consequence for enhancing the existing syntax features.
 
-
-# Prior art
+## Prior art
 
 - Ruby supports `%W` in addition to `%w` array literals ([Ruby %W]).
 
 [Ruby %W]: https://docs.ruby-lang.org/en/4.0/syntax/literals_rdoc.html#label-25w+and+-25W-3A+String-Array+Literals
 
-
-# Unresolved questions
+## Unresolved questions
 
 - Details and edge cases of the splat syntax
 
-
-# Future possibilities
+## Future possibilities
 
 - Ruby also supports `%I` in addition to `%i` for symbol array literals ([Ruby %I]).
   We could consider porting that to Crystal as well. But it seems much less useful than string arrays, and outside the scope of this RFC.
