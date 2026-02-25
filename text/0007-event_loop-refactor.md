@@ -241,7 +241,7 @@ The proposed model completely eliminates that by creating a standardized interfa
 
 ## Unresolved questions
 
-#### What’s the scope of the Crystal event loop?
+### What’s the scope of the Crystal event loop?
 
 This is a list of operations which we expect to go through the event loop:
 
@@ -262,7 +262,7 @@ Should events from the Crystal runtime be part of the event loop as well?
 - Fiber: sleep
 - Select actions: send, receive, timeout
 
-#### Optional event loop features
+### Optional event loop features
 
 Some activities are managed on the event loop on one platform but not on others. Example would be `Process#wait` which goes through IOCP on Windows but on Unix it’s part of signal handling. (Note: Perhaps we could try to get that on the event loop on Unix as well? **🤔** But there are other examples of system differences)
 
@@ -273,12 +273,12 @@ Do we require these optional methods to be present in all event loop implementat
 - Alternative event loop implementations based directly on the system selectors
   instead of `libevent` ([RFC 0009](https://github.com/crystal-lang/rfcs/pull/9))
 
-#### Type for sizes
+### Type for sizes
 
 Currently, the return type of `unbuffered_read` is unspecified and there’s a bit of a mess. Technically, it can only be `Int32` because that’s the size of `Slice`. We could use the same in the event loop API. However, in order to be future proof for bigger sizes (<https://github.com/crystal-lang/crystal/issues/4011>), we could design the API with `SizeT` instead. Considering it’s a low-level system API, this should be fine and makes a lot of sense.\
 Currently, the only possible values would still be the positive range of `Int32`, so there would be no conversion risk.
 
-#### Blocking event loop
+### Blocking event loop
 
 There should be a basic implementation with blocking syscalls when non-blocking operation is unavailable. This would currently be used for WASI, for example, and allows IO to work, although not as efficiently.
 
@@ -288,18 +288,18 @@ This works well with the libevent implementation because if the lib calls never 
 
 Alternative idea: If polling is unavailable, we could consider sleeping the fiber for some time and let it retry again **🤷**
 
-#### `#connect` timeout
+### `#connect` timeout
 
 `Socket#connect` is the only method with a timeout parameter. This seems weird. All other timeouts are configured on the IO instance.
 It probably makes sense to standardize, introduce a new property `Socket#connect_timeout`, and deprecate the def parameter.
 
-#### Bulk events without fibers
+### Bulk events without fibers
 
 For some applications it might be useful to interact with the event loop directly, being able to push operations in bulk without having to spawn (and wait) a fiber for each one.
 
 - [Fiber usage in high IO application](https://forum.crystal-lang.org/t/fiber-usage-in-high-io-application/6689)
 
-#### Integration with `select`
+### Integration with `select`
 
 `select` actions are implemented completely independent of the event loop, yet they operate in a similar domain (wait for something to happen). These actions are special in that they ensure atomicity. When waiting on multiple actions simultaneously, it’s guaranteed that only one of them executes. This probably won’t be exactly possible with most event loop features.
 

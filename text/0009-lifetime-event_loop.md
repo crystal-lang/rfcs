@@ -61,7 +61,7 @@ The new event loop driver is enabled automatically on supported targets (see
 unsupported targets and can be opted-in with the compile-time flag
 `-Deventloop=libevent`.
 
-#### Design
+### Design
 
 The logic of the event loop doesn't change much from the one based on
 `libevent`:
@@ -92,7 +92,7 @@ multiple fibers.
 > performance improvement. Real applications would see less improvements,
 > though.
 
-#### Multi-Threading
+### Multi-Threading
 
 > [!CAUTION]
 >
@@ -125,7 +125,7 @@ waiting for connections on a server socket. This shall be mitigated with
 execution contexts where an event loop instance is shared per context — just
 don't share a `fd` between contexts.
 
-#### Availability
+### Availability
 
 The lifetime event loop driver is supported on:
 
