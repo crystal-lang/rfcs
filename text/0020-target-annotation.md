@@ -135,7 +135,6 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 ## Unresolved questions
 
 - Should there be warnings and should they be be suppressible or configurable?
-- Do we really need to guard the `@[Target]` def with arch flags or only the callsites?
 
 
 ## Future possibilities
