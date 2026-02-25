@@ -81,7 +81,7 @@ end
 - If a C lib has a `:showdoc:` directive, everything in the namespace should be shown, except for things marked with `:nodoc:`
 - If an objects parent namespace has the `:nodoc:` directive, the `:showdoc:` directive will have no effect
 - C functions should include both the original function name and the Crystal name in the documentation
-- Some experimentation into a different implementation was done [here](https://github.com/crystal-lang/crystal/compare/master...nobodywasishere:crystal:nobody/docs-include-more)
+- Some experimentation into a different implementation was done in https://github.com/crystal-lang/crystal/compare/master...nobodywasishere:crystal:nobody/docs-include-more
 
 ## Drawbacks
 
@@ -109,7 +109,7 @@ Rubys FFI generates normal classes so there's no distinction for them when gener
 
 ### Rust
 
-Rust documents all public types by default. There is a flag for adding private types to the API docs, see the discussion [here](https://github.com/rust-lang/cargo/issues/1520).
+Rust documents all public types by default. There is a flag for adding private types to the API docs, see the discussion in https://github.com/rust-lang/cargo/issues/1520.
 
 ### Elixir
 
