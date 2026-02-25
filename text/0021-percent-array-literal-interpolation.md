@@ -71,7 +71,7 @@ An array element can consist of an combination of interpolations and static comp
 Interpolation syntax also supports splat expansion which inserts multiple elements into the array at the respective position.
 Splat interpolation does not support static prefix or suffix strings, i.e. it must be surrounded by whitespace or be anchored at the begin or end of the literal.
 
-```
+```cr
 %W[foo #{*%w[bar baz]} qux] # => ["foo", "bar", "baz", "qux"]
 ```
 
