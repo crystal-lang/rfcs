@@ -148,7 +148,7 @@ The implementation is based on the current `Crystal::Time.monotonic`, like
 `Time.monotonic`. It currently uses the following system calls:
 
 | Platform | System call |
-|-|-|
+| - | - |
 | Darwin | `mach_absolute_time` (equivalent to [`clock_gettime(CLOCK_UPTIME_RAW)`][clock_gettime (darwin)]) |
 | Other Unix | `clock_gettime(CLOCK_MONOTONIC)` |
 | Windows | `QueryPerformanceCounter` |
@@ -157,9 +157,9 @@ In order to implement the expectation of being as steady as possible and tick
 while the system is suspended, some changes to the underlying clock are necessary.
 
 | Platform | System call | Properties |
-|-|-|-|
+| - | - | - |
 | Darwin | [`clock_gettime(CLOCK_MONOTONIC_RAW)`][clock_gettime (darwin)] | No adjustment, includes sleep, includes suspend? |
-| FreeBSD| [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend |
+| FreeBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (FreeBSD)] | No adjustment, includes sleep, includes suspend |
 | Dragonfly | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (Dragonfly)] | No adjustment, includes sleep, includes suspend |
 | Linux | [`clock_gettime(CLOCK_BOOTTIME)`][clock_gettime (Linux)] | Slewed, includes sleep, includes suspend |
 | NetBSD | [`clock_gettime(CLOCK_MONOTONIC)`][clock_gettime (NetBSD)] | No adjustment, ? |
