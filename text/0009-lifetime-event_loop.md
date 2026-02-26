@@ -51,8 +51,9 @@ provide an example-driven introduction to the policy, and explain its impact in
 concrete terms.
 -->
 
-This new event loop driver builds on top of the event loop refactor from [RFC
-#0007](./0007-event_loop-refactor.md). It plugs right into the runtime and does
+This new event loop driver builds on top of the event loop refactor from
+[RFC #0007](./0007-event_loop-refactor.md). It plugs right into the runtime and does
+
 not require any changes in user code, even for direct consumers of the
 `Crystal::EventLoop` API.
 
