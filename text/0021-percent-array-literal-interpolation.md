@@ -1,5 +1,5 @@
 ---
-Feature Name: "`pecent-array-literal-interpolation`"
+Feature Name: "`percent-array-literal-interpolation`"
 Start Date: 2026-02-25
 RFC PR: "https://github.com/crystal-lang/rfcs/pull/21"
 Issue:
