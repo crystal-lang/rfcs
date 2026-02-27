@@ -155,7 +155,7 @@ the system selector (`IOCP`).
 
 - **Crystal event loop:** Component of the Crystal runtime that subscribes to
   and dispatches events from the OS and other sources to enqueue a waiting fiber
-  when a desired event (such as IO availability) has occured. It’s an interface
+  when a desired event (such as IO availability) has occurred. It’s an interface
   between Crystal’s scheduler and the event loop driver.
 
 - **Event loop driver:** Connects the event loop backend (`libevent`, `IOCP`,
@@ -235,7 +235,7 @@ finalizer will close the `fd` and tell the event loop to cleanup the associated 
 
 To avoid pushing raw pointers into the kernel data structures, and to quickly
 retrieve the _Poll Descriptor_ from a mere `fd`, but also to avoid programming
-errors that would segfault the program, this propsal introduces a _Generational
+errors that would segfault the program, this proposal introduces a _Generational
 Arena_ to store the _Poll Descriptors_ (the name is inherited from Go's netpoll)
 so we only store an index into the polling system. Another benefit is that we
 can reuse the existing allocation when a `fd` is reused. If we try to retrieve

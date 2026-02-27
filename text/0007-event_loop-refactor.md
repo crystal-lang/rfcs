@@ -61,7 +61,7 @@ Further extensions can widen the scope of the event loop.
 
 - **Event loop**: an abstraction to wait on specific events, such as timers (e.g. wait until a certain amount of time has passed) or IO (e.g. wait for an socket to be readable or writable).
 
-- **Crystal event loop:** Component of the Crystal runtime that subscribes to and dispatches events from the OS and other sources to enqueue a waiting fiber when a desired event (such as IO availability) has occured. It’s an interface between Crystal’s scheduler and the system’s event loop backend.
+- **Crystal event loop:** Component of the Crystal runtime that subscribes to and dispatches events from the OS and other sources to enqueue a waiting fiber when a desired event (such as IO availability) has occurred. It’s an interface between Crystal’s scheduler and the system’s event loop backend.
 
 - **System selector:** The system implementation of an event loop which the runtime component depends on to receive events from the operating system. Example implementations: `epoll`, `kqueue`, `IOCP`, `libevent` (a cross-platform wrapper of the former), `io_uring`
 
@@ -76,9 +76,9 @@ Further extensions can widen the scope of the event loop.
 
 ## Reference-level explanation
 
-The new `EventLoop` interface consits of individual module interfaces which
+The new `EventLoop` interface consists of individual module interfaces which
 defines operations on the event loop related to a specific concept.
-The `run` and `interrupt` methods are shown for completenes, but they are part
+The `run` and `interrupt` methods are shown for completeness, but they are part
 of [RFC 0002](https://github.com/crystal-lang/rfcs/pull/2) ([#14568](https://github.com/crystal-lang/crystal/pull/14568)).
 
 ```cr
