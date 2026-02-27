@@ -5,12 +5,12 @@ RFC PR: "https://github.com/crystal-lang/rfcs/pull/0007"
 Issue: "https://github.com/crystal-lang/crystal/issues/10766"
 ---
 
-# Summary
+## Summary
 
 Refactor the event loop interface to be decoupled from `libevent` and adapts to
 the needs of multithreaded execution contexts ([RFC #0002](https://github.com/crystal-lang/rfcs/pull/0002)).
 
-# Motivation
+## Motivation
 
 The event loop is the central piece for enabling non-blocking operations and other event-based activities.
 
@@ -25,7 +25,7 @@ This context also asks for some changes to the event loop interface to allow mor
 This has also brought up the idea to use system event loops directly instead of `libevent` (which is essentially a cross-platform wrapper around them).
 This would also allow to take control of the abstraction and open possibilities for further optimization in Crystal resulting in more performance.
 
-# Guide-level explanation
+## Guide-level explanation
 
 `Crystal::EventLoop` exposes a generic and compact interface for actions that are to be performed on Crystals event loop.
 This interface is used in the implementation of asynchronous IO and other evented operations.
@@ -33,6 +33,7 @@ This interface is used in the implementation of asynchronous IO and other evente
 Compared to the previous event loop implementation, actions are entirely self-contained instead of scattered between the event loop and the system implementations of `Socket` and `Crystal::System::FileDescriptor`.
 
 For example, the previous, platform-specific implementation of `Socket#unbuffered_read` for Unix systems:
+
 ```cr
 private def unbuffered_read(slice : Bytes) : Int32
   evented_read(slice, "Error reading socket") do
@@ -42,6 +43,7 @@ end
 ```
 
 The new, portable implementation of `Socket#unbuffered_read`:
+
 ```cr
 private def unbuffered_read(slice : Bytes) : Int32
   event_loop.read(self, slice)
@@ -55,7 +57,7 @@ Further extensions can widen the scope of the event loop.
 
 `Crystal::Eventloop` is an internal API, thus changing it does not break backwards compatibility.
 
-## Terminology
+### Terminology
 
 - **Event loop**: an abstraction to wait on specific events, such as timers (e.g. wait until a certain amount of time has passed) or IO (e.g. wait for an socket to be readable or writable).
 
@@ -65,14 +67,14 @@ Further extensions can widen the scope of the event loop.
 
 - **Scheduler:** manages fibers’ executions inside the program (controlled by Crystal), unlike threads that are scheduled by the operating system (outside of the accessibility of the program).
 
-## General Design Principles
+### General Design Principles
 
 - **Generic API**: Independent of a specific event loop design
 - **Black Box**: No interference with internals of the event loop
 - **Pluggable**: It must be possible to compile multiple event loop implementations and choose at runtime.
   Only one type of implementation will typically be active (it would be feasible to have different event loop implementations in different execution contexts, if there's a use case for that).
 
-# Reference-level explanation
+## Reference-level explanation
 
 The new `EventLoop` interface consits of individual module interfaces which
 defines operations on the event loop related to a specific concept.
@@ -210,18 +212,18 @@ end
 
 Notable differences from the previous API:
 
-* Timeout and resume events are not on the event loop. The scheduler is supposed to handle them directly.
+- Timeout and resume events are not on the event loop. The scheduler is supposed to handle them directly.
   `Crystal::System::Event` gets removed as this was its only use case.
-* The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
-  This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write *all* bytes of the given slice.
-* `Socket` is not part of the core library, so references to its types (e.g. in type restrictions) would not resolve.
+- The behaviour of event loop actions `read` and `write` has been unified: they both read/write at least one byte and return the number of bytes read/written.
+  This keeps the event loop implementation minimal and more versatile. Previously, `write` was expected to write _all_ bytes of the given slice.
+- `Socket` is not part of the core library, so references to its types (e.g. in type restrictions) would not resolve.
   The `EventLoop` interface is split into individual modules and the `Socket` module is always defined, but only filled with abstract defs when `socket.cr` is explicitly required.
 
-# Drawbacks
+## Drawbacks
 
 None.
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 The rationale is to create our own system independent event loop, and to keep it as abstract as possible to support any kinds of models (asynchronous, polling) over the actual operations.
 
@@ -229,15 +231,15 @@ Alternatives, as they exist today, leak system specifics into the stdlib types (
 
 The proposed model completely eliminates that by creating a standardized interface.
 
-# Prior art
+## Prior art
 
-## References
+### References
 
 - <https://tinyclouds.org/iocp_links>
 - Zig: [Proposal: Event loop redesign (ziglang/zig#8224)](https://github.com/ziglang/zig/issues/8224)
 - [\[RFC\] Fiber preemption, blocking calls and other concurrency issues (crystal-lang/crystal#1454)](https://github.com/crystal-lang/crystal/issues/1454)
 
-# Unresolved questions
+## Unresolved questions
 
 ### What’s the scope of the Crystal event loop?
 
@@ -266,9 +268,9 @@ Some activities are managed on the event loop on one platform but not on others.
 
 Do we require these optional methods to be present in all event loop implementations, i.e. they’re part of the global interface? Some impls would then just raise “Not implemented”. Alternatively, we could keep them out of the main interface and check for availability via `event_loop.responds_to?`. or a sub interface (`is_a?(EventLoop::Process)`). Or…?
 
-# Future possibilities
+## Future possibilities
 
-* Alternative event loop implementations based directly on the system selectors
+- Alternative event loop implementations based directly on the system selectors
   instead of `libevent` ([RFC 0009](https://github.com/crystal-lang/rfcs/pull/9))
 
 ### Type for sizes

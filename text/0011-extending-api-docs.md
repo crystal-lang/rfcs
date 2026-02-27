@@ -5,11 +5,11 @@ RFC PR: "https://github.com/crystal-lang/rfcs/pull/11"
 Issue: "https://github.com/crystal-lang/crystal/issues/6721"
 ---
 
-# Summary
+## Summary
 
 Introduce a `:showdoc:` directive for the doc generator which includes normally undocumented types and methods in the API documentation.
 
-# Motivation
+## Motivation
 
 Currently, API documentation is not generated for private/protected methods/objects or C lib binding objects.
 This was originally done as these (typically) should not be used externally. However, this is not always the case.
@@ -20,7 +20,7 @@ Another use case is for libraries such as [raylib.cr](https://github.com/sol-vin
 "Crystal" interface to them using classes and structs would be prohibitive, therefore they expose the lib bindings as part of the public API. It currently requires diving
 into the source code in order to figure out what methods are available.
 
-# Guide-level explanation
+## Guide-level explanation
 
 The `:showdoc:` directive can be added to private or protected objects, methods, and C lib bindings, to have them show up in API documentation.
 By default, these are hidden and should only be shown if they're explicitly intended to be used.
@@ -73,7 +73,7 @@ struct MyStruct
 end
 ```
 
-# Reference-level explanation
+## Reference-level explanation
 
 - The parser will need to be updated to support doc comments for C lib binding objects and the `:showdoc:` directive
 - The documentation generator will need to be updated to support C lib binding objects and private/protected objects
@@ -81,13 +81,13 @@ end
 - If a C lib has a `:showdoc:` directive, everything in the namespace should be shown, except for things marked with `:nodoc:`
 - If an objects parent namespace has the `:nodoc:` directive, the `:showdoc:` directive will have no effect
 - C functions should include both the original function name and the Crystal name in the documentation
-- Some experimentation into a different implementation was done [here](https://github.com/crystal-lang/crystal/compare/master...nobodywasishere:crystal:nobody/docs-include-more)
+- Some experimentation into a different implementation was done in https://github.com/crystal-lang/crystal/compare/master...nobodywasishere:crystal:nobody/docs-include-more
 
-# Drawbacks
+## Drawbacks
 
 Allowing showing private or protected methods in documentation may lead to confusion from users when they try to use those methods (and they don't work).
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 The other design that has been considered is having flags on the documentation generator itself that enable showing of private / protected objects and C lib objects in the API documentation. We chose not to go with this design as it required flags to be added at generation time, and only generated all or none (no granularity in what is shown).
 
@@ -95,11 +95,11 @@ Another alternative is a more sophisticated syntax for documentation metadata, l
 
 This cannot be done in a library instead as it requires updates to the parser itself. This proposal makes Crystal code easier to understand, as it increases the amount and quality of API documentation.
 
-# Prior art
+## Prior art
 
 There is a [PR](https://github.com/crystal-lang/crystal/pull/14816) implementing a similar feature, however it uses the generation-time flag method mentioned above, instead of the `:showdoc:` directive.
 
-## Ruby / YARD
+### Ruby / YARD
 
 Ruby (via YARD) has global flags for showing protected and private methods when generating documentation. By default they are hidden.
 Each project can have a `.docopts` file that specifies the options to use when building the docs, making it so specifying the flags every time is unnecessary.
@@ -107,18 +107,18 @@ Example of protected method: https://rubydoc.info/gems/yard/0.9.37/YARD/Handlers
 
 Rubys FFI generates normal classes so there's no distinction for them when generating API documentation. Example: https://rubydoc.info/gems/raylib-bindings/Raylib/Vector2
 
-## Rust
+### Rust
 
-Rust documents all public types by default. There is a flag for adding private types to the API docs, see the discussion [here](https://github.com/rust-lang/cargo/issues/1520).
+Rust documents all public types by default. There is a flag for adding private types to the API docs, see the discussion in https://github.com/rust-lang/cargo/issues/1520.
 
-## Elixir
+### Elixir
 
 Elixir documents FFI bindings, see https://hexdocs.pm/rayex/Rayex.Core.html#begin_drawing/0.
 
 It does not have a method for documenting private methods, see https://hexdocs.pm/elixir/1.12/writing-documentation.html#documentation-code-comments.
 > Because private functions cannot be accessed externally, Elixir will warn if a private function has a @doc attribute and will discard its content.
 
-# Future possibilities
+## Future possibilities
 
 - A `semantic` crystal tool that outputs all Crystal objects regardless of directives
 - More documentation directives such as `:section: Section Name` or `:include: path/to/file.md`

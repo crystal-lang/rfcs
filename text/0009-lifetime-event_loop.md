@@ -5,14 +5,14 @@ RFC PR: "https://github.com/crystal-lang/rfcs/pull/9"
 Issue: "https://github.com/crystal-lang/crystal/pull/14996"
 ---
 
-# Summary
+## Summary
 
 Integrate the Crystal event loop directly with system selectors,
 [`epoll`](https://linux.die.net/man/7/epoll) (Linux, Android) and
 [`kqueue`](https://man.freebsd.org/cgi/man.cgi?kqueue) (BSDs, macOS) instead of
 going through [`libevent`](https://libevent.org/).
 
-# Motivation
+## Motivation
 
 Direct integration with the system selectors enables a more performant
 implementation thanks to a design change. Going from ad-hoc event subscriptions
@@ -25,7 +25,7 @@ programs.
 This also prepares the event loop foundation for implementing execution contexts
 from [RFC #0002](https://github.com/crystal-lang/rfcs/pull/2).
 
-# Guide-level explanation
+## Guide-level explanation
 
 <!--
 Explain the proposal as if it was already included in the language and you were
@@ -51,13 +51,13 @@ provide an example-driven introduction to the policy, and explain its impact in
 concrete terms.
 -->
 
-This new event loop driver builds on top of the event loop refactor from [RFC
-#0007](./0007-event_loop-refactor.md). It plugs right into the runtime and does
+This new event loop driver builds on top of the event loop refactor from
+[RFC #0007](./0007-event_loop-refactor.md). It plugs right into the runtime and does
 not require any changes in user code, even for direct consumers of the
 `Crystal::EventLoop` API.
 
 The new event loop driver is enabled automatically on supported targets (see
-[*Availability*](#availability)). The `libevent` driver serves as a fallback for
+[_Availability_](#availability)). The `libevent` driver serves as a fallback for
 unsupported targets and can be opted-in with the compile-time flag
 `-Deventloop=libevent`.
 
@@ -66,11 +66,11 @@ unsupported targets and can be opted-in with the compile-time flag
 The logic of the event loop doesn't change much from the one based on
 `libevent`:
 
-* We try to execute an operation (e.g. `read`, `write`, `connect`, ...) on
+- We try to execute an operation (e.g. `read`, `write`, `connect`, ...) on
   nonblocking `fd`s
-* If the operation would block (`EAGAIN`) we create an event that references the
+- If the operation would block (`EAGAIN`) we create an event that references the
   operation along with the current fiber
-* We eventually rely on the polling system (`epoll` or `kqueue`) to report when
+- We eventually rely on the polling system (`epoll` or `kqueue`) to report when
   an `fd` is ready, which will dequeue a pending event and resume its associated
   fiber (one at a time).
 
@@ -147,7 +147,7 @@ The event loop drivers on Windows and WebAssembly (WASI) are not affected by
 this change. The event loop driver for Windows already integrates directly with
 the system selector (`IOCP`).
 
-## Terminology
+### Terminology
 
 - **Event loop**: an abstraction to wait on specific events, such as timers
   (e.g. wait until a certain amount of time has passed) or IO (e.g. wait for an
@@ -170,7 +170,7 @@ the system selector (`IOCP`).
   Crystal), unlike threads that are scheduled by the operating system (outside
   of the accessibility of the program).
 
-# Reference-level explanation
+## Reference-level explanation
 
 <!--
 This is the technical portion of the RFC. Explain the design in sufficient
@@ -194,7 +194,7 @@ The event loop implementations don't use the timeout and instead wait forever
 1. Epoll also has a minimum timeout precision of 1ms, but what if the next
    expiring timer is in 10us?
 
-3. In a single threaded context we could set the timeout to the next expiring
+2. In a single threaded context we could set the timeout to the next expiring
    timer; that would work for no MT as well as `preview_mt`, but if we share
    the event loop instance between threads —which will be the case with
    execution contexts— then we have a race condition: another thread can set a
@@ -206,7 +206,7 @@ that have sub-millisecond precision (except for DragonFlyBSD), and that we can
 update in parallel when the next expiring timer has changed, using a mutex to
 prevent parallel races.
 
-## Components
+### Components
 
 Each syscall is abstracted in its own little struct: `Crystal::System::Epoll`,
 `Crystal::System::TimerFD`, etc.
@@ -225,18 +225,18 @@ Each syscall is abstracted in its own little struct: `Crystal::System::Epoll`,
   advantage that the OS kernel guarantees a unique `fd` number and always reuses
   numbers of closed `fd`, only adding more numbers when needed.
 
-## Poll Descriptors
+### Poll Descriptors
 
 To avoid keeping pointers to the IO object that could prevent the GC from
-collecting lost IO objects, this proposal introduces *Poll Descriptor* objects
+collecting lost IO objects, this proposal introduces _Poll Descriptor_ objects
 (the name comes from Go's netpoll) that keep the list of readers and writers and
 don't point back to the IO object. The GC collecting an IO object is fine: the
-finalizer will close the `fd` and tell the event loop to cleanup the associated *Poll Descriptor* (so we can safely reuse the `fd`).
+finalizer will close the `fd` and tell the event loop to cleanup the associated _Poll Descriptor_ (so we can safely reuse the `fd`).
 
 To avoid pushing raw pointers into the kernel data structures, and to quickly
-retrieve the *Poll Descriptor* from a mere `fd`, but also to avoid programming
-errors that would segfault the program, this propsal introduces a *Generational
-Arena* to store the *Poll Descriptors* (the name is inherited from Go's netpoll)
+retrieve the _Poll Descriptor_ from a mere `fd`, but also to avoid programming
+errors that would segfault the program, this propsal introduces a _Generational
+Arena_ to store the _Poll Descriptors_ (the name is inherited from Go's netpoll)
 so we only store an index into the polling system. Another benefit is that we
 can reuse the existing allocation when a `fd` is reused. If we try to retrieve
 an outdated index (the allocation was freed or reallocated) the arena will raise
@@ -245,6 +245,7 @@ an explicit exception.
 > [!NOTE]
 >
 > The goals of the arena are:
+>
 > - avoid repeated allocations;
 > - avoid polluting the IO object with the PollDescriptor (doesn't exist in
 > other event loops);
@@ -252,7 +253,7 @@ an explicit exception.
 > - safely detect allocation issues instead of segfaults because of raw
 >   pointers.
 
-The *Poll Descriptors* associate a `fd` to an event loop instance, so we can
+The _Poll Descriptors_ associate a `fd` to an event loop instance, so we can
 still have multiple event loops per processes, yet make sure that an `fd` is
 only ever in one event loop. When a `fd` will block on another event loop
 instance, the `fd` will be transferred automatically (i.e. removed from the old
@@ -274,16 +275,16 @@ execution context.
 
 If this ever proves to be an issue, we can think of solutions. For example migrating timeouts along, triaging external fibers from local ones, and more, of course at the expense of some performance.
 
-# Drawbacks
+## Drawbacks
 
 <!--
 Why should we *not* do this?
 -->
 
-* There's more code to maintain: Instead of only the `libevent` driver we now
+- There's more code to maintain: Instead of only the `libevent` driver we now
   have additional ones to care about.
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 <!--
 - Why is this design the best in the space of possible designs?
@@ -295,7 +296,7 @@ Why should we *not* do this?
   and maintain?
 -->
 
-# Prior art
+## Prior art
 
 <!--
 Discuss prior art, both the good and the bad, in relation to this proposal. A
@@ -321,7 +322,7 @@ sometimes intentionally diverges from common language features.
 
 Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design, with the difference that Go only has a single event loop instance per process.
 
-# Unresolved questions
+## Unresolved questions
 
 <!--
 - What parts of the design do you expect to resolve through the RFC process
@@ -333,7 +334,7 @@ Golang's [netpoll](https://go.dev/src/runtime/netpoll.go) uses a similar design,
   RFC?
 -->
 
-## Timers and timeouts
+### Timers and timeouts
 
 We're missing a proper data structure to store timers and timeouts. It must be
 thread safe and efficient. Ideas are a minheap (4-heap) or a skiplist. Timers
@@ -342,7 +343,7 @@ and timeouts may need to be handled separately.
 This issue is blocking. An inefficient data structure wrecks performance for
 timers and timeouts.
 
-## Performance issues on BSDs
+### Performance issues on BSDs
 
 The `kqueue` driver is disabled on DragonFly BSD, OpenBSD and NetBSD due to
 performance regressions.
@@ -363,7 +364,7 @@ The `kqueue` driver works fine on FreeBSD and Darwin.
 These issues are non-blocking. We can keep using `libevent` on these operating
 systems until resolved.
 
-# Future possibilities
+## Future possibilities
 
 <!--
 Think about what the natural extension and evolution of your proposal would be
@@ -384,6 +385,6 @@ section on motivation or rationale in this or subsequent RFCs. The section
 merely provides additional information.
 -->
 
-* `aio` for async read/write over regular disk files with `kqueue`
-* Integrate more evented operations such as `signalfd`/`EVFILT_SIGNAL` and
+- `aio` for async read/write over regular disk files with `kqueue`
+- Integrate more evented operations such as `signalfd`/`EVFILT_SIGNAL` and
   `pidfd`/`EVFILT_PROC`.
