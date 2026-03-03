@@ -5,15 +5,15 @@ RFC PR: "https://github.com/crystal-lang/rfcs/pull/2"
 Issue: "https://github.com/crystal-lang/crystal/issues/15342"
 ---
 
-# Summary
+## Summary
 
 Reinvent Crystal's concurrency execution model with respect to multi-threading. It's getting more efficient, for example by avoiding blocked fibers while there are sleeping threads. And it empowers developers with different strategies for scheduling fiber, called _Execution Contexts_.
 
 Note: this proposal takes inspiration from Go and Kotlin.
 
-# Motivation (analysis of current situation)
+## Motivation (analysis of current situation)
 
-## Terminology
+### Terminology
 
 - **Thread**: program whose execution is controlled by the operating system ([wikipedia](https://en.wikipedia.org/wiki/Thread_(computing))).
 - **Fiber**: unit of works or “functions whose execution you can pause” ([wikipedia](https://en.wikipedia.org/wiki/Coroutine)), we can run multiple fibers per thread.
@@ -22,7 +22,7 @@ Note: this proposal takes inspiration from Go and Kotlin.
 - **Multi-threaded (MT)**: the environment uses multiple threads, fibers can run both concurrently and in parallel on different CPU cores.
 - **Single-threaded (ST)**: the environment uses only one thread, fibers can never run in parallel but still run concurrently.
 
-## Concurrency
+### Concurrency
 
 > [!NOTE]
 > I only quickly sum up the concurrency model. There are very interesting topics about concurrency to consider (e.g. structured concurrency, fiber cancellation), but this RFC focuses on parallelism.
@@ -39,7 +39,7 @@ Fibers are cooperative and can’t be preempted from external means. That being 
 
 The fact that fibers can’t be preempted is a side effect, and not part of the concurrency model. A future evolution may actively preempt fibers that have been running for too long, or ask them to yield at preemptible points.
 
-## Parallelism
+### Parallelism
 
 The current MT model can be summed up in one sentence:
 
@@ -78,37 +78,37 @@ flowchart LR
     end
 ```
 
-## Pros
+### Pros
 
 If all fibers on one thread operate on the same data, that data should already be available in the CPU caches.
 
-### Data locality
+#### Data locality
 
 With few fibers running, resuming may improve cache reuses, which can improve performance. With too many threads (than available CPUs) or a busy operating system with many apps, with lots of thread context switches, that may not hold true.
 
-### Group a set of fibers together
+#### Group a set of fibers together
 
 Such a group of fibers will never run in parallel. This can vastly simplify the synchronization logic since you don’t have to deal with parallelism anymore, only concurrency, which is much easier & faster to deal with. For example no need for costly atomic operations, you can simply access a value directly. Parallelism issues and their impact on the application performance is limited to the global communication.
 
-## Issues
+### Issues
 
-### The round robin dispatcher doesn’t consider busy threads.
+#### The round robin dispatcher doesn’t consider busy threads
 
 Crystal pushes new fibers to whatever thread, meaning that we may push fibers to busy threads with a large queue, while there may be available threads, or with smaller / faster queues.
 
 If you’re unlucky, the busy fibers can be scheduled on the same thread while another thread is sleeping, impacting the performance instead of improving it, as we don’t benefit from parallelism.
 
-### A starving thread will go to sleep
+#### A starving thread will go to sleep
 
 A thread whose scheduler queue of runnable fibers runs empty will immediately put itself to sleep, regardless of how busy other threads may be. An application performance may be impacted as it can lose one or more CPUs that will only be resumed when new fibers are queued, while fibers will continue to be queued on the busy thread(s).
 
-### CPU bound fiber blocks other fibers queued on the same thread/scheduler
+#### CPU bound fiber blocks other fibers queued on the same thread/scheduler
 
 See issue [#12392](https://github.com/crystal-lang/crystal/issues/12392) for an example of this problem: a CPU bound fiber that never encounters a preemptible point will block all the fibers that are stuck on the thread, without any possibility for them to be moved to another thread.
 
 The worst case is stalling the whole application waiting for one fiber, as well as having the busy fibers stuck on some threads, instead of being spread across all the threads, limiting or preventing parallelism.
 
-### Example
+#### Example
 
 In the following graphic we can see that thread #1 is busy (running fiber 1, with fibers 2 and 3 being blocked), while thread #2 is sleeping.
 
@@ -126,26 +126,26 @@ flowchart TD
     end
 ```
 
-## Limitations
+### Limitations
 
 > [!IMPORTANT]
 > Some of these limitations may be fixable in the current model, with maybe a few limitations left.
 
-### Can’t control the number of threads/schedulers at runtime
+#### Can’t control the number of threads/schedulers at runtime
 
 There is no API to determine the initial number of threads/schedulers, or to resize the list.
 
 > [!NOTE]
 > This could be fixed with the current model. Sizing up isn’t an issue, but sizing down can be: we can’t move fibers, so we must wait for the queue to run empty before the thread can stop. If long running fibers are sent to different threads (e.g. signal handler loop, loggers) we may not be able to resize down!
 
-### Can’t start a thread without a scheduler & event-loop
+#### Can’t start a thread without a scheduler & event-loop
 
 Technically we can (`Thread.new` is undisclosed API but can be called), yet calling anything remotely related to fibers or the event-loop is dangerous as it will immediately create a scheduler for the thread, and/or an event-loop for that thread, and possibly block the thread from doing any progress if the thread puts itself to sleep waiting for an event, or other issues.
 
 > [!NOTE]
 > We can fix this in the current model. For example by supporting to create a “bare” thread. Spawning a fiber would always be sent to other schedulers (or raise). We can also probably figure something about the event-loop and timers (e.g. Thread.sleep).
 
-### Can’t isolate a fiber to a thread
+#### Can’t isolate a fiber to a thread
 
 The fiber becomes the sole fiber executing on that thread, for a period of time or forever. No fiber shall be scheduled on that thread anymore. Here are some use cases:
 
@@ -158,13 +158,13 @@ The fiber becomes the sole fiber executing on that thread, for a period of time 
 >
 > That wouldn’t fix issue [#12392](https://github.com/crystal-lang/crystal/issues/12392) however: we can’t have the current thread continue running the current fiber, and actively move the scheduler to another thread to not block the other fibers, otherwise the fibers would run in parallel to the isolated fiber, breaking the contract!
 
-# Guide-level explanation (the proposal)
+## Guide-level explanation (the proposal)
 
 In the light of the pros (locality) and cons (blocked fibers), I propose to break the "a fiber will always be resumed by the same thread" concept and instead have "a fiber may be resumed by any thread" to enable more scenarios, for example a MT environment with work stealing.
 
 These scenarios don't have to be a single MT environment with work stealing like Go proposes, but instead to have the ability, at runtime, to create environments to spawn specific fibers in.
 
-## Execution contexts
+### Execution contexts
 
 An execution context creates and manages a dedicated pool of 1 or more threads where fibers can be executed into. Each context manages the rules to run, suspend and swap fibers internally.
 
@@ -176,7 +176,7 @@ When spawning a fiber, the fiber would by default be enqueued into the current e
 
 Once spawned a fiber shouldn’t _move_ to another execution context. For example on re-enqueue the fiber must be resumed into it’s execution context: a fiber running in context B enqueues a waiting sender from context A must enqueue it into context A. That being said, we could allow to _send_ a fiber to another context.
 
-## Kinds of execution contexts
+### Kinds of execution contexts
 
 The following are the potential contexts that Crystal could implement in stdlib.
 
@@ -193,7 +193,7 @@ Precisions:
 - Fibers running in one context still run in parallel to fibers of other contexts.
 - An execution context should be wrappable. For example we could want to add nursery-like capabilities on top of an existing context, where the context monitors all fibers and automatically shuts down when all said fibers have completed.
 
-## The default execution context
+### The default execution context
 
 Crystal starts a MT execution context with work-stealing where fibers are spawned by default. The goal of this context is to provide an environment that should fit most use cases to freely take advantage of multiple CPU cores, without developers having to think much about it, outside of protecting concurrent accesses to a resource or, preferably, using channels to communicate.
 
@@ -204,13 +204,13 @@ It might be configured to run on one thread, hence disabling the parallelism of 
 > [!NOTE]
 > 2025-10-27: The characteristics of the default context have been adjusted in [#16136](https://github.com/crystal-lang/crystal/pull/16136). See the [API docs](https://crystal-lang.org/api/Fiber/ExecutionContext.html#the-default-execution-context) for details.
 
-## The additional execution contexts
+### The additional execution contexts
 
 Applications can create other execution contexts in addition to the default one. These contexts can have different behaviors. For example a context may make sure some fibers will never run in parallel or will have dedicated resources to run in (never blocking certain fibers). Even allow to tweak the threads' priority and CPU affinity for better allocations on CPU cores.
 
 Ideally, anybody could implement an execution context that suits their application, or wrap an existing execution context.
 
-## Examples
+### Examples
 
 1. We can have fully isolated single-threaded execution contexts, mimicking the current MT implementation.
 
@@ -222,7 +222,7 @@ Ideally, anybody could implement an execution context that suits their applicati
 
 5. Different contexts could have different priorities and affinities, to allow the operating system to allocate threads more efficiently in heterogenous computing architectures (e.g. ARM big.LITTLE).
 
-# Reference-level explanation
+## Reference-level explanation
 
 An execution context shall provide:
 
@@ -235,7 +235,7 @@ Ideally developers would be able to create custom execution contexts. That means
 
 In addition, synchronization primitives, such as `Channel(T)` or `Mutex`, must allow communication and synchronization across execution contexts, and thus need to be thread-safe.
 
-## Changes
+### Changes
 
 ```crystal
 class Thread
@@ -458,14 +458,14 @@ class Fiber::ExecutionContext::Isolated < Fiber::ExecutionContext::Concurrent
 end
 ```
 
-### Example
+#### Example
 
 ```crystal
-# (main fiber runs in the default context)
-# shrink the main context to a single thread:
+## (main fiber runs in the default context)
+## shrink the main context to a single thread:
 Fiber::ExecutionContext.default.resize(maximum: 1)
 
-# create a dedicated context with N threads:
+## create a dedicated context with N threads:
 ncpu = System.cpu_count.to_i32
 codegen = ExecutionContext::Parallel.new(name: "CODEGEN", maximum: ncpu)
 channel = Channel(CompilationUnit).new(ncpu * 4)
@@ -491,10 +491,10 @@ end
 
 group.wait
 
-# now, we can link the executable
+## now, we can link the executable
 ```
 
-## Breaking changes
+### Breaking changes
 
 The default execution context moving from 'a fiber is always resumed on the same thread" to the more lenient 'a fiber can be resumed by any thread", this introduces a couple breaking changes over `preview_mt`.
 
@@ -523,7 +523,7 @@ The default execution context moving from 'a fiber is always resumed on the same
 >
 > Alternatively, since the `-Dpreview_mt` compilation flag denotes an experimental feature, we could deprecate `same_thread` in a Crystal 1.x release, then make it a NOOP and set the default context to MT:1 in a further Crystal 1.y release. Crystal 2 would then drop the `same_thread` argument and could change the default context to MT:N.
 
-# Drawbacks
+## Drawbacks
 
 Usages of the `Crystal::ThreadLocalValue` helper class might break with fibers moving across threads. We use this because the GC can't access the Thread Local Storage space of threads. Some usages might be replaceable with direct accessors on `Thread.current` but some usages link a particular object instance to a particular thread; those cases will need to be refactored.
 
@@ -539,7 +539,7 @@ Usages of the `Crystal::ThreadLocalValue` helper class might break with fibers m
 > [!WARNING]
 > The event loop will very likely need an interface to fully abstract OS specific details around nonblocking calls (epoll, kqueue, IOCP, io_uring, …). See [#10766](https://github.com/crystal-lang/crystal/issues/10766).
 
-# Rationale and alternatives
+## Rationale and alternatives
 
 The rationale is to have efficient parallelism to make the most out of the CPU cores, to provide an environment that should usually work, yet avoid limiting the choices for the developer to squeeze the last remaining drops of potential parallelism.
 
@@ -549,7 +549,7 @@ Another alternative would be to implement Go's model and make it the only possib
 
 One last, less obvious solution, could be to drop MT completely, and assume that crystal applications can only live on a single thread. That would heavily simplify synchronization primitives. Parallelism could be achieved with multiple processes and IPC (Inter Process Communication), allowing an application to be distributed inside a cluster.
 
-# Prior art
+## Prior art
 
 As mentioned in the introduction, this proposal takes inspiration from Go and Kotlin ([coroutines guide](https://kotlinlang.org/docs/coroutines-guide.html)).
 
@@ -561,9 +561,9 @@ Both languages have coroutines and parallelism built right into the language. Bo
 
 The **Tokio** crate for **Rust** provides a single-threaded scheduler or a multi-threaded scheduler (with work stealing), but it must be chosen at compilation time. Apparently the MT scheduler is selected by default (to be verified).
 
-# Unresolved questions
+## Unresolved questions
 
-## Introduction of the feature
+### Introduction of the feature
 
 The feature requires both the `preview_mt` and `execution_contexts` flags while we implement and rollout the feature. The first flag is to enable thread safety in stdlib, and the second one to replace the the legacy scheduler with the execution context schedulers.
 
@@ -571,7 +571,7 @@ The feature requires both the `preview_mt` and `execution_contexts` flags while 
 
 ~~Maybe MT could be limited to 1 thread by default, and `spawn(same_thread)` be deprecated, but what to do with `spawn(same_thread: true)`?~~
 
-## Default context configuration
+### Default context configuration
 
 This proposal doesn’t solve the inherent problem of: how can applications configure the default context at runtime (e.g. number of MT schedulers) since we create the context before the application’s main can start.
 
@@ -579,6 +579,6 @@ We could maybe have sensible defaults + lazily started schedulers & threads, whi
 
 The application would then be able to scale the default context programmatically, for example to a minimum of 4 schedulers which will immediately start the additional schedulers & threads.
 
-# Future possibilities
+## Future possibilities
 
 Parallel execution contexts could eventually have a dynamic number of threads, adding new threads to a context when it has enough work, and removing threads when threads are starving (up to a maximum limit, like GOMAXPROCS in Go). Ideally the threads could return to a thread pool, and be reused by other contexts.
