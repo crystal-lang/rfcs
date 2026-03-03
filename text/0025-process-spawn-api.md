@@ -30,7 +30,7 @@ A major change to method signatures is redesigning the parameters of spawning me
 
 ```cr
 # legacy:
-Process.run("crystal", ["tool format"])
+Process.run("crystal", ["tool", "format"])
 
 # modern:
 Process.run(["crystal", "tool", "format"])
