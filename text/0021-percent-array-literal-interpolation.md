@@ -28,7 +28,7 @@ Upper and lower case indicating interpolation support is analogue to the percent
 
 ```cr
 path = "foo.cr"
-Process.run %W[crystal tool format #{paths}]
+Process.run %W[crystal tool format #{path}]
 # equivalent:
 Process.run ["crystal", "tool", "format", path]
 ```
@@ -49,6 +49,8 @@ The basic properties are identical to `%w`:
 
 # escapes
 %W[foo\ bar baz] # => ["foo bar", "baz"]
+%W[foo 'bar baz'] # => ["foo", "'bar", "baz'"]
+%W[foo "bar baz"] # => ["foo", "\"bar", "baz\""]
 ```
 
 Interpolation syntax works similar to interpolation in string literals.
