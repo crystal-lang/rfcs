@@ -40,8 +40,6 @@ Process.run %W[crystal tool format #{*paths}]
 Process.run ["crystal", "tool", "format", *paths]
 ```
 
-## Reference-level explanation
-
 The basic properties are identical to `%w`:
 
 ```cr
@@ -59,7 +57,7 @@ An array element can consist of an combination of interpolations and static comp
 
 ```cr
 %W[foo #{"bar"} baz]            # => ["foo", "bar", "baz"]
-%W[foo #{1 + 1} baz]                # => ["foo", "2", "baz"]
+%W[foo #{1 + 1} baz]            # => ["foo", "2", "baz"]
 %W[foo #{"bar"}baz#{"bab"} qux] # => ["foo", "barbazbab", "qux"]
 %W[foo _#{"bar"}_ baz]          # => ["foo", "_bar_", "baz"]
 %W[foo #{"bar baz"} qux]        # => ["foo", "bar baz", "qux"]
@@ -70,6 +68,31 @@ Splat interpolation does not support static prefix or suffix strings, i.e. it mu
 
 ```cr
 %W[foo #{*%w[bar baz]} qux] # => ["foo", "bar", "baz", "qux"]
+```
+
+## Reference-level explanation
+
+`%W` literals parse into `ArrayLiteral` instances, just like `%w` literals.
+Elements with interpolation are of type `StringInterpolation` or `Splat`, static strings are of type `StringLiteral`.
+
+This example shows the respective equivalent (partial) parsing results:
+
+```cr
+%W[foo #{1 + 1} baz]
+["foo", "#{1 + 1}", "baz"] of ::String
+
+%W[foo #{"bar baz"} qux]
+["foo", "#{"bar baz"}", "qux"] of ::String
+
+%W[foo #{*%w[bar baz]} qux]
+["foo", *%w[bar baz], "qux"] of ::String
+```
+
+When string interpolations only contain string literals, they can be merged together,
+just like in string literal interpolation.
+
+```cr
+%W[#{"foo"}] # == %W[foo]
 ```
 
 ## Drawbacks
