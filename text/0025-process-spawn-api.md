@@ -79,6 +79,29 @@ def Process.run(
 
 Methods that yield to a block (e.g., `Process.run(&)`) now return a tuple of the block output and the process status, so callers get both without relying on the `$?` side channel.
 
+### Single `args` array
+
+The entire command line consisting of the command and its arguments is represented as a single value which can be passed around easily.
+
+String array literals are a convenient way to write a command line. The syntax reads similar to a shell command, but it's actually an array and thus avoids shell parsing rules.
+
+```cr
+# array literal
+Process.run(["crystal", "tool", "format", path])
+Process.run(["crystal", "tool", "format", *paths])
+
+# string array literal + mutation
+Process.run(%w[crystal tool format] << path)
+Process.run(%w[crystal tool format].concat(paths))
+
+# string array literal with interpolation (RFC 21)
+Process.run(%W[crystal tool format #{path}])
+Process.run(%W[crystal tool format #{*paths}])
+```
+
+> [!NOTE]
+> String array literals with interpolation are discussed in [RFC 21].
+
 ### `shell` parameter
 
 Because shell parsing and behaviour vary across platforms, `shell: true` is not part of the modern API.
@@ -190,29 +213,6 @@ end
 
 > [!NOTE]
 > The discussion about these methods is in [#7171].
-
-### String array literals with interpolation
-
-String array literals are a convenient way to write a command line. The syntax reads like a shell command, but it's actually an array and thus avoids shell parsing rules.
-The `%w` string array literal does not support interpolation, which limits use to completely static command lines.
-The `%W` string array literal syntax supports interpolation and can be used with dynamic components.
-
-```cr
-# without percent-like literal
-Process.run(["crystal", "tool", "format", path])
-Process.run(["crystal", "tool", "format", *paths])
-
-# percent literal + mutation
-Process.run(%w[crystal tool format] << path)
-Process.run(%w[crystal tool format].concat(paths))
-
-# percent literal with interpolation
-Process.run(%W[crystal tool format #{path}])
-Process.run(%W[crystal tool format #{*paths}])
-```
-
-> [!NOTE]
-> The discussion about this syntax feature is in [RFC 21].
 
 ## Drawbacks
 
