@@ -139,47 +139,47 @@ They return `nil` when the executable doesn't exist or is not executable (start 
 
 The `Process.capture` group of methods provides a convenient tool to capture the output of the subprocess.
 
-By default, `Process.capture` captures both `stdout` and `stderr`, but it only returns `stdout`.
-The captured output of `stderr` is passed to the error message in case the process was unsuccessful. If the error output is unreasonably long, it's truncated to keep only the first and last 32kB in order to prevent resource exhaustion.
+By default, `Process.capture` captures both `output` and `error`, but it only returns `output`.
+The captured output of `error` is passed to the error message in case the process was unsuccessful. If the error output is unreasonably long, it's truncated to keep only the first and last 32kB in order to prevent resource exhaustion.
 Passing any value other than `error: :pipe` prevents capturing the error stream.
 
-- `Process.capture(...) : String`: Returns captured stdout and raises if the process terminates unsuccessfully.
-- `Process.capture?(...) : String?`: Returns captured stdout or `nil` if the process terminates unsuccessfully.
+- `Process.capture(...) : String`: Returns captured output and raises if the process terminates unsuccessfully.
+- `Process.capture?(...) : String?`: Returns captured output or `nil` if the process terminates unsuccessfully.
 - `Process.capture_result(...) : Process::Result`: Returns captured result and raises if the process terminates unsuccessfully.
 - `Process.capture_result?(...) : Process::Result?`: Returns captured result or `nil` if the process terminates unsuccessfully.
 
-`Process::Result` exposes the exit status of the process as well as captured stdout and stderr, if available.
+`Process::Result` exposes the exit status of the process as well as captured output and error streams, if available.
 
 ```cr
 struct Process::Result
-  # Returns the captured `stdout` stream.
+  # Returns the captured `output` stream.
   #
-  # If `stdout` was not captured, returns the empty string.
-  def stdout : String
+  # If `output` was not captured, returns the empty string.
+  def output : String
   end
 
-  # Returns the captured `stdout` stream.
+  # Returns the captured `output` stream.
   #
-  # If `stdout` was not captured, returns `nil`.
-  def stdout? : String?
+  # If `output` was not captured, returns `nil`.
+  def output? : String?
   end
 
-  # Returns the captured `stderr` stream.
+  # Returns the captured `error` stream.
   #
-  # If `stderr` was not captured, returns the empty string.
+  # If `error` was not captured, returns the empty string.
   #
   # The captured error stream might be truncated. If the total output is larger
   # than 64kB, only the first 32kB and the last 32kB are preserved.
-  def stderr : String
+  def error : String
   end
 
-  # Returns the captured `stderr` stream.
+  # Returns the captured `error` stream.
   #
-  # If `stderr` was not captured, returns `nil`.
+  # If `error` was not captured, returns `nil`.
   #
   # The captured error stream might be truncated. If the total output is larger
   # than 64kB, only the first 32kB and the last 32kB are preserved.
-  def stderr? : String?
+  def error? : String?
   end
 
   # Returns the status of the process.
