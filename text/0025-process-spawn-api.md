@@ -261,7 +261,7 @@ But when the API already provides for direct status communication, there is no r
 
 ### New capture methods
 
-Many programs need to capture output and use custom wrappers for this.
+Many programs need to capture output and use custom wrappers for this. This requires complex calls to `Process.run` or non-portable and potentially unsafe shell command using the command operator.
 Providing a robust, well-tested implementation in the standard library is more convenient and helps avoid subtle resource and quoting bugs.
 
 ### Dropping `clear_env`
