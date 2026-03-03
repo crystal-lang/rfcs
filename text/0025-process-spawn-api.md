@@ -1,7 +1,7 @@
 ---
 Feature Name: process-spawn-api
 Start Date: 2022-02-28
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/25" # fill me in after creating the PR, also update the filename
 Issue: "https://github.com/crystal-lang/crystal/issues/16657"
 ---
 
