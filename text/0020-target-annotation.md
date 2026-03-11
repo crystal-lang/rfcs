@@ -22,7 +22,7 @@ The current compiler refuses to generate instructions that are not supported by 
 That means every compilation can target exactly one configuration which can either be generic and miss out on advanced features or depend on advanced features and reduce portability.
 This prohibits legitimate use cases for having optional code paths, depending on feature support at runtime.
 
-You thus need to tell LLVM to enable CPU features scoped to specific functions only, which sounds reasonable. Annotations also sound good.
+You thus need to tell LLVM to enable CPU features scoped to specific functions only. In this proposal we suggest an annotation for it.
 
 
 ## Guide-level explanation
