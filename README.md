@@ -8,9 +8,9 @@ Some changes though are "substantial", and we ask that these be put through a bi
 
 Active RFCs and drafts can be accessed through the Pull Request index:
 
-* [Active RFCs](https://github.com/crystal-lang/rfcs/pulls?q=sort%3Aupdated-desc+is%3Apr+is%3Aopen+-is%3Adraft+label%3Arfc)
-* [RFC Drafts](https://github.com/crystal-lang/rfcs/pulls?q=sort%3Aupdated-desc+is%3Apr+is%3Adraft+label%3Arfc)
-* [Archived RFCs](./text)
+- [Active RFCs](https://github.com/crystal-lang/rfcs/pulls?q=sort%3Aupdated-desc+is%3Apr+is%3Aopen+-is%3Adraft+label%3Arfc)
+- [RFC Drafts](https://github.com/crystal-lang/rfcs/pulls?q=sort%3Aupdated-desc+is%3Apr+is%3Adraft+label%3Arfc)
+- [Archived RFCs](./text)
 
 ## Table of Contents
 
