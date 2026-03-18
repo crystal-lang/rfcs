@@ -11,7 +11,6 @@ Implementation PR: "https://github.com/crystal-lang/crystal/pull/16571"
 Introduces a new `@[TargetFeature]` annotation that allows setting codegen options for individual methods.
 This enables programs to include code paths that use advanced CPU instructions (such as SIMD extensions) and select compatible implementations at runtime.
 
-
 ## Motivation
 
 For performance-critical routines, it is important to be able to use advanced CPU features.
@@ -23,7 +22,6 @@ That means every compilation can target exactly one configuration which can eith
 This prohibits legitimate use cases for having optional code paths, depending on feature support at runtime.
 
 You thus need to tell LLVM to enable CPU features scoped to specific functions only. In this proposal we suggest an annotation for it.
-
 
 ## Guide-level explanation
 
@@ -52,7 +50,6 @@ end
 > [!CAUTION]
 > This is an unsafe feature. Misuse can lead to immediate process termination via illegal instruction faults.
 
-
 ## Reference-level explanation
 
 The `@[TargetFeature]` annotation can be applied to a `def` or `fun` definition to enable
@@ -61,12 +58,15 @@ specific code generation features.
 It supports these parameters:
 
 - `feature`: Select specific platform architecture features. See https://llvm.org/doxygen/classllvm_1_1SubtargetFeatures.html
+
   ```cr
   @[TargetFeature("+avx2")]
   def foo_avx2
   end
   ```
+
 - `cpu`: Select a specific CPU model.
+
   ```cr
   @[TargetFeature(cpu: "apple-m1")]
   def foo_m1
@@ -107,12 +107,10 @@ A method compiled with additional features must never be inlined into a context 
 If LLVM decides to inline a call inside a method annotated with `@[TargetFeature]`, then LLVM
 will be allowed to use the specified CPU features to optimize the inlined code.
 
-
 ## Drawbacks
 
 - Increased complexity in code generation and target feature management.
 - Risk that binaries may crash at runtime when this feature is handled unsafely.
-
 
 ## Rationale and alternatives
 
@@ -120,7 +118,6 @@ An alternative would be to build individual libraries with specific codegen opti
 and link them together into an executable.
 
 This is technically already possible, but complex and unergonomic.
-
 
 ## Prior art
 
@@ -131,11 +128,9 @@ Several modern systems languages provide mechanisms to compile code using CPU fe
 - Go doesn't validate instructions in its own assembly language.
 - Zig requires separate code + object files each compiled separately with the correct flags and then the object files are linked. There is an ongoing discussion in [zig #1018] with a similar motivation as this RFC.
 
-
 ## Unresolved questions
 
 - Should there be warnings and should they be be suppressible or configurable?
-
 
 ## Future possibilities
 
