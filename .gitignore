@@ -1,0 +1,18 @@
+# Environment configuration
+Makefile.local
+Makefile.win.local
+.env
+.env.*
+.envrc
+.envrc.*
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
