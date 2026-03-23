@@ -166,10 +166,10 @@ By default, `Process.capture` captures both `output` and `error`, but it only re
 The captured output of `error` is passed to the error message in case the process was unsuccessful. If the error output is unreasonably long, it's truncated to keep only the first and last 32kB in order to prevent resource exhaustion.
 Passing any value other than `error: :pipe` prevents capturing the error stream.
 
-- `Process.capture(...) : String`: Returns captured output and raises if the process terminates unsuccessfully.
-- `Process.capture?(...) : String?`: Returns captured output or `nil` if the process terminates unsuccessfully.
-- `Process.capture_result(...) : Process::Result`: Returns captured result and raises if the process terminates unsuccessfully.
-- `Process.capture_result?(...) : Process::Result?`: Returns captured result or `nil` if the process terminates unsuccessfully.
+- `Process.capture(...) : String`: Returns captured output or raises if the process does not terminate successfully.
+- `Process.capture?(...) : String?`: Returns captured output or `nil` if the process does not terminate successfully.
+- `Process.capture_result(...) : Process::Result`: Returns captured result or raises if the process fails to execute.
+- `Process.capture_result?(...) : Process::Result?`: Returns captured result or `nil` if the process fails to execute.
 
 `Process::Result` exposes the exit status of the process as well as captured output and error streams, if available.
 
