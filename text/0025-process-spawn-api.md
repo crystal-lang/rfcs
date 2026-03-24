@@ -19,21 +19,26 @@ Spawning processes is a fundamental capability for many programs, and many users
 ## Guide-level explanation
 
 The modern API treats the command line as an array of strings where the first element is the program to execute, and the remaining elements are its arguments.
+The command line can be given as a single string array argument, or as splat string arguments.
 
 The `Process.capture` group of methods conveniently capture the output of subprocesses.
 
 ```cr
-Process.capture(%w[echo foo]) # => "foo"
+Process.capture("echo", "foo") # => "foo"
 ```
 
-A major change to method signatures is redesigning the parameters of spawning methods from `command, args` to just `args` ([#14773]).
+A major change to method signatures is redesigning the parameters of spawning methods from `command, args` to just `args`, or the splat variant `*args` ([#14773]).
 
 ```cr
 # legacy:
 Process.run("crystal", ["tool", "format"])
 
+# both:
+Process.run("crystal")
+
 # modern:
 Process.run(["crystal", "tool", "format"])
+Process.run("crystal", "tool", "format")
 ```
 
 String array literals offer a convenient notation that looks similar to a shell command line. Literals with interpolation (`%W`, [RFC 21]) are especially useful for process arguments with dynamic components.
@@ -53,7 +58,7 @@ When shell-like behavior is required, spawn the shell explicitly and pass the co
 Process.run("echo foo bar | head", shell: true)
 
 # modern:
-Process.run(["/bin/sh", "-c", "echo foo bar | head"])
+Process.run("/bin/sh", "-c", "echo foo bar | head")
 ```
 
 ## Reference-level explanation
@@ -86,6 +91,10 @@ The entire command line consisting of the command and its arguments is represent
 String array literals are a convenient way to write a command line. The syntax reads similar to a shell command, but it's actually an array and thus avoids shell parsing rules.
 
 ```cr
+# splat parameter
+Process.run("crystal", "tool", "format", path)
+Process.run("crystal", "tool", "format", *paths) # `paths` must be a Tuple
+
 # array literal
 Process.run(["crystal", "tool", "format", path])
 Process.run(["crystal", "tool", "format", *paths])
@@ -114,8 +123,8 @@ Process.run("NAME=Crystal && echo \"$NAME\"", shell: true)
 Process.run("set NAME=Crystal && echo %NAME%", shell: true)
 
 # modern:
-Process.run(["/bin/sh", "-c", "NAME=Crystal && echo \"$NAME\""])
-Process.run(["cmd.exe", "/c", "set NAME=Crystal && echo %NAME%"])
+Process.run("/bin/sh", "-c", "NAME=Crystal && echo \"$NAME\"")
+Process.run("cmd.exe", "/c", "set NAME=Crystal && echo %NAME%")
 ```
 
 The legacy methods with `shell` parameters will continue to work for now, but they are expected to be deprecated eventually.
@@ -140,7 +149,7 @@ end
 status = $?
 
 # modern:
-output, status = Process.run(["crystal", "tool", "format"]) do
+output, status = Process.run("crystal", "tool", "format") do
   1
 end
 ```
@@ -238,6 +247,10 @@ Many APIs for spawning processes in other programming languages use a single lis
 
 The internal implementation already merges `command` and `args` into an array.
 Exposing that in the public API can enhance efficiency.
+
+Allowing to pass the command line as splat parameter is a convenient alternative
+to requiring array literal syntax everywhere.
+It also means that single commands without arguments are identical in both variants.
 
 ### Dropping `shell: true`
 
