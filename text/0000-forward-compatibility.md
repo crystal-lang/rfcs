@@ -1,8 +1,8 @@
 ---
 Feature Name: forward-compatibility-policy
 Start Date: 2026-08-25
-RFC PR: "https://github.com/crystal-lang/rfcs/pull/0000" # fill me in after creating the PR, also update the filename
-Issue: "https://github.com/crystal-lang/crystal/issues/0000"
+RFC PR: "https://github.com/crystal-lang/rfcs/pull/30"
+Issue:
 ---
 
 ## Summary
