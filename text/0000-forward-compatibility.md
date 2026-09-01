@@ -38,7 +38,7 @@ The compiler uses an in-tree version of the standard library, so this policy als
 We still encourage package maintainers to bootstrap from the most recently available compiler to benefit from improvements in code generation and optimization.
 But it is technically possible to pin the stage 0 compiler and only advance it every 2 years. In that case, we strongly recommend building a stage 2 compiler.
 
-> [!NOTE] Backwards Compatibility
+> [!NOTE]
 > This policy does not affect the [_Backwards Compatibility_ policy]:
 > Any compiler of the 1.x release series can still compile a program written for 1.0.
 > That includes being able to build a 1.0 compiler from any future compiler of the 1.x series.
