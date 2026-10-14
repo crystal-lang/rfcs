@@ -3,11 +3,11 @@
     "devenv": {
       "locked": {
         "dir": "src/modules",
-        "lastModified": 1772738982,
-        "narHash": "sha256-9MN0FV0XeYJV7kFtUxY6uQMxbZmlrPQLUm3yLbEEJ7Q=",
+        "lastModified": 1791974003,
+        "narHash": "sha256-MCLTef8FTEuQGBJ8jNvtOgONHeU+VdDEskW0hO7rDxo=",
         "owner": "cachix",
         "repo": "devenv",
-        "rev": "22ec127af85396b04af045ec20d004d11a0675af",
+        "rev": "f0e28b36610d4ef3a7c8d9380d4a40834a4eb8df",
         "type": "github"
       },
       "original": {
@@ -36,87 +36,34 @@
     "git-hooks": {
       "inputs": {
         "flake-compat": "flake-compat",
-        "gitignore": "gitignore",
-        "nixpkgs": "nixpkgs"
-      },
-      "locked": {
-        "lastModified": 1772665116,
-        "narHash": "sha256-XmjUDG/J8Z8lY5DVNVUf5aoZGc400FxcjsNCqHKiKtc=",
-        "owner": "cachix",
-        "repo": "git-hooks.nix",
-        "rev": "39f53203a8458c330f61cc0759fe243f0ac0d198",
-        "type": "github"
-      },
-      "original": {
-        "owner": "cachix",
-        "repo": "git-hooks.nix",
-        "type": "github"
-      }
-    },
-    "gitignore": {
-      "inputs": {
         "nixpkgs": [
-          "git-hooks",
           "nixpkgs"
         ]
       },
       "locked": {
-        "lastModified": 1709087332,
-        "narHash": "sha256-HG2cCnktfHsKV0s4XW83gU3F57gaTljL9KNSuG6bnQs=",
-        "owner": "hercules-ci",
-        "repo": "gitignore.nix",
-        "rev": "637db329424fd7e46cf4185293b9cc8c88c95394",
+        "lastModified": 1791909798,
+        "narHash": "sha256-VAhpCOmrun/KXimYfR8NM88bciKCui7CqHHhThSzgag=",
+        "owner": "cachix",
+        "repo": "git-hooks.nix",
+        "rev": "1ba1dbfe28738c9a71c266be6efa5b89e75491a9",
         "type": "github"
       },
       "original": {
-        "owner": "hercules-ci",
-        "repo": "gitignore.nix",
+        "owner": "cachix",
+        "repo": "git-hooks.nix",
         "type": "github"
       }
     },
     "nixpkgs": {
-      "locked": {
-        "lastModified": 1770073757,
-        "narHash": "sha256-Vy+G+F+3E/Tl+GMNgiHl9Pah2DgShmIUBJXmbiQPHbI=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "47472570b1e607482890801aeaf29bfb749884f6",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1769922788,
-        "narHash": "sha256-H3AfG4ObMDTkTJYkd8cz1/RbY9LatN5Mk4UF48VuSXc=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "207d15f1a6603226e1e223dc79ac29c7846da32e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixpkgs-unstable",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
-    "nixpkgs_2": {
       "inputs": {
         "nixpkgs-src": "nixpkgs-src"
       },
       "locked": {
-        "lastModified": 1770434727,
-        "narHash": "sha256-YzOZRgiqIccnkkZvckQha7wvOfN2z50xEdPvfgu6sf8=",
+        "lastModified": 1791812882,
+        "narHash": "sha256-4AdYH2HoD21mys5lk9NoDcM2Z7iPeEUjxJeGE3Pw278=",
         "owner": "cachix",
         "repo": "devenv-nixpkgs",
-        "rev": "8430f16a39c27bdeef236f1eeb56f0b51b33d348",
+        "rev": "760b85220489f69855e6df78a6d1dad5873f8bf6",
         "type": "github"
       },
       "original": {
@@ -126,11 +73,28 @@
         "type": "github"
       }
     },
+    "nixpkgs-src": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791487292,
+        "narHash": "sha256-tqM7xDEsaeK1p6VvRygeZ9LkQRpUUkbRT02BHv6hnTM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "8edc0c72e3a38faf5434e40d1f19431125fe4b30",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "devenv": "devenv",
         "git-hooks": "git-hooks",
-        "nixpkgs": "nixpkgs_2"
+        "nixpkgs": "nixpkgs"
       }
     }
   },
